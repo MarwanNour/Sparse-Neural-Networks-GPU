@@ -5,8 +5,10 @@ This project aims to accelerate the evaluation of sparse neural networks.
 
 ## Description of the sequential code:
    The sequential code starts by converting featureVectors to CSR and the converting layer weights to CSC.The code loops over every layer ,and does spmspm multiplication(explained bellow) taking advantage of double buffering.After that it  checks for non zero rows and store them into result vector.
-   ### The SPMSPM multiplication: ###
-    The SPMSPM multiplication  happens by looping over non empty raws of feature vectors.Then for every non empty raw loop over all non empty column and the calculate the dot product by finding the intersction.And finally storing postive results in a CSR Form  matrix.
+   ### The SPMSPM multiplication: ##
+        The SPMSPM multiplication  happens by looping over non empty raws of feature vectors.Then
+         for every non empty raw loop over all non empty column and the calculate the dot product by 
+        finding the intersction.And finally storing postive results in a CSR Form  matrix.
 
 
 
