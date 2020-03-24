@@ -12,7 +12,7 @@ This project aims to accelerate the evaluation of sparse neural networks.
 
 
 ## Compiling the code:
-    - Compile all versions: make
+    - Bullet list Compile all versions: make
     - Compile a specific version: make spnn_<version>
     - Where <version> can be cpu, gpu0, gpu1, gpu2, or gpu3
 ## Running the code: ./spnn_< version >
