@@ -13,7 +13,8 @@
 __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
-    unsigned int nnzIdx; // Number of non zero indexes in Result
+    unsigned int nnzIdx0;
+    unsigned int nnzIdx1=0; 
     __shared__ int offset[BLOCK_DIM];
 
  
@@ -59,20 +60,20 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                     if(sum > THRESHOLD || sum < -THRESHOLD) {
                         sum += bias;
 
-                        __syncthreads();
+                        // __syncthreads();
                         
                         //Remove negative and zero values
                         if(sum > 0) {
                             if(sum>YMAX) {
                                 sum = YMAX;
                             }
-                            ++nnzIdx;
+                            ++nnzIdx0;
                         }    
                     }
                 }
             }
         }
-        offset[r] = nnzIdx;        
+        offset[r] = nnzIdx0;        
     }
     __syncthreads();
     if(threadIdx.x==0){
@@ -136,20 +137,20 @@ if(r < A->numRows ){
                         if(sum>YMAX) {
                             sum = YMAX;
                         }
-                        ++nnzIdx;
-                        result->colIdxs[nnzIdx + x] = c;
-                        result->values[nnzIdx + x] = sum;
+                        ++nnzIdx1;
+                        result->colIdxs[nnzIdx1 + x] = c;
+                        result->values[nnzIdx1 + x] = sum;
                     }    
                 }
             }
-            result->rowPtrs[r + 1] = x + nnzIdx; 
+            result->rowPtrs[r + 1] = x + nnzIdx1; 
         }
     }
     // result->nnz = nnzIdx;  
-    atomicAdd(&result->nnz, nnzIdx);     
+    atomicAdd(&result->nnz, nnzIdx1);     
 }
 
-__syncthreads();
+// __syncthreads();
 
 
 }
