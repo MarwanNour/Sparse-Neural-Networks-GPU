@@ -10,11 +10,11 @@
 
 #define BLOCK_DIM 1024
 
-__global__ spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
+__global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx; // Number of non zero indexes in Result
-    __shared__ offset[BLOCK_DIM];
+    __shared__ int offset[BLOCK_DIM];
 
  
 
@@ -32,7 +32,7 @@ __global__ spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
                 unsigned int nnzB = B->colPtrs[c + 1] = colPtrB;
 
                 if(nnzB > 0){
-                    unsigned int *rowsIdxsB = B->rowsIdxs + colPtrB;
+                    unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
                     float *valueB = B->values + colPtrB;
 
                     // Loop and find intersection
@@ -41,9 +41,9 @@ __global__ spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
                     unsigned int ib = 0;
 
                     // Loop over segment of non zero elements in the row of A and col of B
-                    while(ia < nnzA && ib < nnzzB){
+                    while(ia < nnzA && ib < nnzB){
                         unsigned int colIdx = colIdxsA[ia];
-                        unsigned int rowIdx = rowsIdxsB[ib];
+                        unsigned int rowIdx = rowIdxsB[ib];
                         if(colIdx < rowIdx) {
                             ia++;
                         } else if(colIdx > rowIdx) {
@@ -102,7 +102,7 @@ if(r < A->numRows ){
             unsigned int nnzB = B->colPtrs[c + 1] = colPtrB;
 
             if(nnzB > 0){
-                unsigned int *rowsIdxsB = B->rowsIdxs + colPtrB;
+                unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
                 float *valueB = B->values + colPtrB;
 
                 // Loop and find intersection
@@ -111,9 +111,9 @@ if(r < A->numRows ){
                 unsigned int ib = 0;
 
                 // Loop over segment of non zero elements in the row of A and col of B
-                while(ia < nnzA && ib < nnzzB){
+                while(ia < nnzA && ib < nnzB){
                     unsigned int colIdx = colIdxsA[ia];
-                    unsigned int rowIdx = rowsIdxsB[ib];
+                    unsigned int rowIdx = rowIdxsB[ib];
                     if(colIdx < rowIdx) {
                         ia++;
                     } else if(colIdx > rowIdx) {
@@ -137,12 +137,12 @@ if(r < A->numRows ){
                             sum = YMAX;
                         }
                         ++nnzIdx;
-                        result->colIdxs[nnzIdx+x] = c;
-                        result->values[nnzIdx+x] = sum;
+                        result->colIdxs[nnzIdx + x] = c;
+                        result->values[nnzIdx + x] = sum;
                     }    
                 }
             }
-            result->rowPtrs[r + 1] = x+nnzIdx; 
+            result->rowPtrs[r + 1] = x + nnzIdx; 
         }
     }
     // result->nnz = nnzIdx;  
@@ -210,7 +210,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         // Configurations
         const unsigned int threadsPerBlock = BLOCK_DIM;
-        const unsigned int blocksPerGrid = (threadsPerBlock + outBuffer->numRows() - 1)/threadsPerBlock;
+        const unsigned int blocksPerGrid = (threadsPerBlock + outBuffer->numRows - 1)/threadsPerBlock;
 
         // Copy data to gpu
         cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
