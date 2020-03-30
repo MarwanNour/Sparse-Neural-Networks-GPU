@@ -13,12 +13,11 @@
 __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
-    unsigned int nnzIdx0;
-    unsigned int nnzIdx1=0; 
+    unsigned int nnzIdx0 = 0;
+    unsigned int nnzIdx1 = 0; 
     __shared__ int offset[BLOCK_DIM];
 
  
-
     if(r < A->numRows ){
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
@@ -76,81 +75,85 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         offset[r] = nnzIdx0;        
     }
     __syncthreads();
-    if(threadIdx.x==0){
-        if(r==0){
-            offset[r]=0;
+    
+    // Prefix sum
+    if(threadIdx.x == 0){
+        if(r == 0){
+            offset[r] = 0;
         }
         else{
-            offset[r]=result->nnz;
+            offset[0] = result->nnz;
         }
-    for(int i =1;i<BLOCK_DIM;++i){
-        offset[i]+=offset[i-1];
+        for(int i = 1; i<BLOCK_DIM; ++i){
+            offset[i] += offset[i-1];
+        }
     }
-}
-__syncthreads();
-if(r < A->numRows ){
-    unsigned int x=offset[r];
-    unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-    unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+    __syncthreads();
+    
 
-    if(nnzA > 0){
-        unsigned int *colIdxsA = A->colIdxs + rowPtrA;
-        float *valueA = A->values + rowPtrA;
+    if(r < A->numRows ){
+        unsigned int x=offset[r];
+        unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
+        unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
 
-        // Loop over B columns
-        for(unsigned int c = 0; c < B->numCols; ++c){
-            unsigned int colPtrB = B->colPtrs[c];
-            unsigned int nnzB = B->colPtrs[c + 1] = colPtrB;
+        if(nnzA > 0){
+            unsigned int *colIdxsA = A->colIdxs + rowPtrA;
+            float *valueA = A->values + rowPtrA;
 
-            if(nnzB > 0){
-                unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
-                float *valueB = B->values + colPtrB;
+            // Loop over B columns
+            for(unsigned int c = 0; c < B->numCols; ++c){
+                unsigned int colPtrB = B->colPtrs[c];
+                unsigned int nnzB = B->colPtrs[c + 1] = colPtrB;
 
-                // Loop and find intersection
-                float sum = 0;
-                unsigned int ia = 0;
-                unsigned int ib = 0;
+                if(nnzB > 0){
+                    unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
+                    float *valueB = B->values + colPtrB;
 
-                // Loop over segment of non zero elements in the row of A and col of B
-                while(ia < nnzA && ib < nnzB){
-                    unsigned int colIdx = colIdxsA[ia];
-                    unsigned int rowIdx = rowIdxsB[ib];
-                    if(colIdx < rowIdx) {
-                        ia++;
-                    } else if(colIdx > rowIdx) {
-                        ib++;
-                    } else {
-                        sum += valueA[ia]*valueB[ib];
-                        ia++;
-                        ib++;
+                    // Loop and find intersection
+                    float sum = 0;
+                    unsigned int ia = 0;
+                    unsigned int ib = 0;
+
+                    // Loop over segment of non zero elements in the row of A and col of B
+                    while(ia < nnzA && ib < nnzB){
+                        unsigned int colIdx = colIdxsA[ia];
+                        unsigned int rowIdx = rowIdxsB[ib];
+                        if(colIdx < rowIdx) {
+                            ia++;
+                        } else if(colIdx > rowIdx) {
+                            ib++;
+                        } else {
+                            sum += valueA[ia]*valueB[ib];
+                            ia++;
+                            ib++;
+                        }
+                    }
+                    // Sync threads
+                    // Write to Result
+                    if(sum > THRESHOLD || sum < -THRESHOLD) {
+                        sum += bias;
+
+                        __syncthreads();
+                        
+                        //Remove negative and zero values
+                        if(sum > 0) {
+                            if(sum>YMAX) {
+                                sum = YMAX;
+                            }
+                            ++nnzIdx1;
+                            result->colIdxs[nnzIdx1 + x] = c;
+                            result->values[nnzIdx1 + x] = sum;
+                        }    
                     }
                 }
-                // Sync threads
-                // Write to Result
-                if(sum > THRESHOLD || sum < -THRESHOLD) {
-                    sum += bias;
-
-                    __syncthreads();
-                    
-                    //Remove negative and zero values
-                    if(sum > 0) {
-                        if(sum>YMAX) {
-                            sum = YMAX;
-                        }
-                        ++nnzIdx1;
-                        result->colIdxs[nnzIdx1 + x] = c;
-                        result->values[nnzIdx1 + x] = sum;
-                    }    
-                }
+                result->rowPtrs[r + 1] = x + nnzIdx1; 
             }
-            result->rowPtrs[r + 1] = x + nnzIdx1; 
         }
+        // result->nnz = nnzIdx;  
+        atomicAdd(&result->nnz, nnzIdx1);     
     }
-    // result->nnz = nnzIdx;  
-    atomicAdd(&result->nnz, nnzIdx1);     
-}
 
-// __syncthreads();
+    // __syncthreads();
 
 
 }
