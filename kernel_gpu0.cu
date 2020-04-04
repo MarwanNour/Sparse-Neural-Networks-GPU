@@ -10,86 +10,11 @@
 
 #define BLOCK_DIM 1024
 
-__global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
+__global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int offset) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
-    unsigned int nnzIdx0 = 0;
-    unsigned int nnzIdx1 = 0; 
-    __shared__ int offset[BLOCK_DIM];
-
+    unsigned int nnzIdx = 0;
  
-    if(r < A->numRows ){
-        unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
-
-        if(nnzA > 0){
-            unsigned int *colIdxsA = A->colIdxs + rowPtrA;
-            float *valueA = A->values + rowPtrA;
-
-            // Loop over B columns
-            for(unsigned int c = 0; c < B->numCols; ++c){
-                unsigned int colPtrB = B->colPtrs[c];
-                unsigned int nnzB = B->colPtrs[c + 1] = colPtrB;
-
-                if(nnzB > 0){
-                    unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
-                    float *valueB = B->values + colPtrB;
-
-                    // Loop and find intersection
-                    float sum = 0;
-                    unsigned int ia = 0;
-                    unsigned int ib = 0;
-
-                    // Loop over segment of non zero elements in the row of A and col of B
-                    while(ia < nnzA && ib < nnzB){
-                        unsigned int colIdx = colIdxsA[ia];
-                        unsigned int rowIdx = rowIdxsB[ib];
-                        if(colIdx < rowIdx) {
-                            ia++;
-                        } else if(colIdx > rowIdx) {
-                            ib++;
-                        } else {
-                            sum += valueA[ia]*valueB[ib];
-                            ia++;
-                            ib++;
-                        }
-                    }
-                    // Sync threads
-                    // Write to Result
-                    if(sum > THRESHOLD || sum < -THRESHOLD) {
-                        sum += bias;
-
-                        // __syncthreads();
-                        
-                        //Remove negative and zero values
-                        if(sum > 0) {
-                            if(sum>YMAX) {
-                                sum = YMAX;
-                            }
-                            ++nnzIdx0;
-                        }    
-                    }
-                }
-            }
-        }
-        offset[r] = nnzIdx0;        
-    }
-    __syncthreads();
-    
-    // Prefix sum
-    if(threadIdx.x == 0){
-        if(r == 0){
-            offset[r] = 0;
-        }
-        else{
-            offset[0] = result->nnz;
-        }
-        for(int i = 1; i<BLOCK_DIM; ++i){
-            offset[i] += offset[i-1];
-        }
-    }
-    __syncthreads();
-    
 
     if(r < A->numRows ){
         unsigned int x=offset[r];
@@ -141,12 +66,14 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                             ++nnzIdx1;
-                            result->colIdxs[nnzIdx1 + x] = c;
-                            result->values[nnzIdx1 + x] = sum;
+                            nnzdidx = atomicAdd(offset,1);
+                            result->colIdxs[nnzIdx] = c;
+                            result->values[nnzIdx] = sum;
+                            result->rowIdxs[nnzIdx] =r ;
                         }    
                     }
                 }
-                result->rowPtrs[r + 1] = x + nnzIdx1; 
+                // result->rowPtrs[r + 1] = x + nnzIdx1; 
             }
         }
         // result->nnz = nnzIdx;  
@@ -202,30 +129,36 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     // Allocate memory on GPU
     CSRMatrix *inBuffer_d;
     CSRMatrix *outBuffer_d;
+    COOMatrix *outBuffer1_d;
     CSCMatrix *W_d;
 
     cudaMalloc((void **) &inBuffer_d, sizeof(CSRMatrix));
     cudaMalloc((void **) &outBuffer_d, sizeof(CSRMatrix));
     cudaMalloc((void **) &W_d, sizeof(CSCMatrix));
-    
+    cudaMalloc((void **) &outBuffer1_d, sizeof(COOMatrix));
 
+    cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
+    cudaMemcpy(outBuffer_d, outBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
         // Configurations
         const unsigned int threadsPerBlock = BLOCK_DIM;
         const unsigned int blocksPerGrid = (threadsPerBlock + outBuffer->numRows - 1)/threadsPerBlock;
-
+        int offset=0;
         // Copy data to gpu
-        cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
-        cudaMemcpy(outBuffer_d, outBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
         cudaMemcpy(W_d, W[layer], sizeof(CSRMatrix), cudaMemcpyHostToDevice);
 
         // SpMSpM
         printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
         // spmspm(outBuffer, inBuffer, W[layer], bias);
-        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBuffer_d, inBuffer_d, W_d, bias);
+        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBuffer1_d, inBuffer_d, W_d, bias,offset);
+        stopTimeAndPrint(&timer, "");
+
+        // printf("Computing layer %u (SpMSpM)", layer);
+        startTime(&timer);
+        CooToCSR <<< blocksPerGrid, threadsPerBlock >>>(outBuffer_d, outBuffer1_d);
         stopTimeAndPrint(&timer, "");
 
         // Swap buffers
