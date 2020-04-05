@@ -10,7 +10,7 @@
 
 #define BLOCK_DIM 1024
 
-__device__ void createCSRfromCOO(CSRMatrix* result, COOMatrix *A){
+__device__ void histogram(CSRMatrix* result, COOMatrix *A) {
 
     unsigned int i = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int stride = blockDim.x * gridDim.x;
@@ -33,20 +33,33 @@ __device__ void createCSRfromCOO(CSRMatrix* result, COOMatrix *A){
     if(threadIdx.x < size){
         atomicAdd(&result->rowPtrs[threadIdx.x], bins_s[threadIdx.x]);
     }
-
-    // -------- Prefix Sum ---------
-    
-
-    // Binning
-
-    // Restore row pointers
-
-
-
-
-    return csr;
 }
 
+__device__ void prefixSum(CSRMatrix* result, COOMatrix* A) {
+
+    unsigned int i = blockDim.x*blockIdx.x + threadIdx.x;
+    
+    // --------- Kogge-Stone Exclusive -------
+
+
+    /*
+    // Prefix sum
+    unsigned int sum = 0;
+    for(unsigned int row = 0; row < A->numRows; ++row) {
+        unsigned int val = rowPtrs[row];
+        rowPtrs[row] = sum;
+        sum += val;
+    }
+    rowPtrs[A->numRows] = sum;
+    */
+}
+
+__device__ void createCSRfromCOO(CSRMatrix* result, COOMatrix* A) {
+    histogram(result, A);
+
+    prefixSum(result, A);
+
+}
 
 __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
