@@ -128,14 +128,14 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         
     // Allocate memory on GPU
     CSRMatrix *inBuffer_d;
-    CSRMatrix *outBuffer_d;
-    COOMatrix *outBuffer1_d;
+    CSRMatrix *outBufferCOO_d;
+    COOMatrix *outBuffer_d;
     CSCMatrix *W_d;
 
     cudaMalloc((void **) &inBuffer_d, sizeof(CSRMatrix));
-    cudaMalloc((void **) &outBuffer_d, sizeof(CSRMatrix));
+    cudaMalloc((void **) &outBufferCSR_d, sizeof(CSRMatrix));
     cudaMalloc((void **) &W_d, sizeof(CSCMatrix));
-    cudaMalloc((void **) &outBuffer1_d, sizeof(COOMatrix));
+    cudaMalloc((void **) &outBufferCOO_d, sizeof(COOMatrix));
 
     cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
     // cudaMemcpy(outBuffer_d, outBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
@@ -153,22 +153,28 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
         // spmspm(outBuffer, inBuffer, W[layer], bias);
-        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBuffer1_d, inBuffer_d, W_d, bias,offset);
+        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_d, inBuffer_d, W_d, bias,offset);
         stopTimeAndPrint(&timer, "");
 
         // printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
         CooToCSR <<< blocksPerGrid, threadsPerBlock >>>(outBuffer_d, outBuffer1_d);
+        // createCSRfromCOO(outBufferCSR_d,outBufferCOO_d)
         stopTimeAndPrint(&timer, "");
 
         // Swap buffers
-        CSRMatrix *t = inBuffer;
-        inBuffer = outBuffer;
-        outBuffer = t;
+        CSRMatrix *t = inBuffer_d;
+        inBuffer_d = outBufferCSR_d;
+        outBufferCSR_d = t;
 
         
     }
     // Free data on GPU
+    cudaMemcpy(inBuffer, inBuffer_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(outBuffer, inBuffer_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+
+
+
     cudaFree(inBuffer_d);
     cudaFree(outBuffer_d);
     cudaFree(W_d);
