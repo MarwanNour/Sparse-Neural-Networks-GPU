@@ -9,7 +9,84 @@
 #define YMAX 32
 
 #define BLOCK_DIM 1024
+__device__ void hist(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
 
+    unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int stride = blockDim.x * gridDim.x;
+    unsigned int size = numRows_input;
+
+    // --------- Histogram ---------
+    __shared__ unsigned int bins_s[size];
+    if(threadIdx.x < size){
+        bins_s[threadIdx.x] = 0;
+    }
+    __syncthreads();
+
+    while(i < nnz_input){
+        unsigned char b = rowIdx_input[i];        
+        atomicAdd(&bins_s[b], 1);
+        i += stride;
+    }
+    __syncthreads();
+
+    if(threadIdx.x < size){
+        atomicAdd(&rowPtrs_result[threadIdx.x], bins_s[threadIdx.x]);
+    }
+}
+
+__device__ void prefixSum(CSRMatrix* result, COOMatrix* A) {
+
+    unsigned int i = blockDim.x*blockIdx.x + threadIdx.x;
+    
+    // --------- Kogge-Stone Exclusive -------
+    __shared__ unsigned int buffer1_s[BLOCK_DIM];
+    __shared__ unsigned int buffer2_s[BLOCK_DIM];
+    unsigned int* inBuffer_s = buffer1_s;
+    unsigned int* outBuffer_s = buffer2_s;
+    
+    if(threadIdx.x == 0){
+        inBuffer_s[threadIdx.x] = 0;
+    }else{
+        inBuffer_s[threadIdx.x] = input[i - 1];
+    }
+    __syncthreads();
+    
+    for(unsigned int stride = 1; stride <= BLOCK_DIM/2; stride *= 2){
+        if(threadIdx.x >= stride){
+            outBuffer_s[threadIdx.x] = inBuffer_s[threadIdx.x] + inBuffer_s[threadIdx.x - stride];
+        }else{
+            outBuffer_s[threadIdx.x] = inBuffer_s[threadIdx.x];
+        }
+        __syncthreads();
+        unsigned int* temp = inBuffer_s;
+        inBuffer_s = outBuffer_s;
+        outBuffer_s = temp;
+    }
+
+    if(threadIdx.x == BLOCK_DIM - 1){
+        partialSums[blockIdx.x] = inBuffer_s[threadIdx.x] + input[i];
+    }
+
+    output[i] = inBuffer_s[threadIdx.x];
+
+    /*
+    // Prefix sum
+    unsigned int sum = 0;
+    for(unsigned int row = 0; row < A->numRows; ++row) {
+        unsigned int val = rowPtrs[row];
+        rowPtrs[row] = sum;
+        sum += val;
+    }
+    rowPtrs[A->numRows] = sum;
+    */
+}
+
+__global__ void createCSRfromCOO(CSRMatrix* result, COOMatrix* A) {
+    histogram(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
+
+    prefixSum(result, A);
+
+}
 __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int offset) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
@@ -158,7 +235,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         // printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
-        CooToCSR <<< blocksPerGrid, threadsPerBlock >>>(outBuffer_d, outBuffer1_d);
+        createCSRfromCOO <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_d, outBufferCOO_d);
         // createCSRfromCOO(outBufferCSR_d,outBufferCOO_d)
         stopTimeAndPrint(&timer, "");
 
