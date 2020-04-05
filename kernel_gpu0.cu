@@ -65,8 +65,7 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                             if(sum>YMAX) {
                                 sum = YMAX;
                             }
-                            ++nnzIdx1;
-                            nnzdidx = atomicAdd(offset,1);
+                            nnzIdx = atomicAdd(offset,1);
                             result->colIdxs[nnzIdx] = c;
                             result->values[nnzIdx] = sum;
                             result->rowIdxs[nnzIdx] =r ;
