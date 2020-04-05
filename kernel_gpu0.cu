@@ -14,7 +14,7 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
-    unsigned int nnzIdx1;
+    unsigned int temp;
 
     if(r < A->numRows ){
         unsigned int x=offset[r];
@@ -66,14 +66,14 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                             nnzIdx++;
-                            nnzIdx1 = atomicAdd(offset,1);
-                            result->colIdxs[nnzIdx1] = c;
-                            result->values[nnzIdx1] = sum;
-                            result->rowIdxs[nnzIdx1] =r ;
+                            temp= atomicAdd(offset,1);
+                            result->colIdxs[temp] = c;
+                            result->values[temp] = sum;
+                            result->rowIdxs[temp] =r ;
                         }    
                     }
                 }
-                // result->rowPtrs[r + 1] = x + nnzIdx1; 
+                // result->rowPtrs[r + 1] = x + temp; 
             }
         }
         // result->nnz = nnzIdx;  
@@ -138,7 +138,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaMalloc((void **) &outBuffer1_d, sizeof(COOMatrix));
 
     cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
-    cudaMemcpy(outBuffer_d, outBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
+    // cudaMemcpy(outBuffer_d, outBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
