@@ -14,7 +14,7 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
- 
+    unsigned int nnzIdx1;
 
     if(r < A->numRows ){
         unsigned int x=offset[r];
@@ -65,10 +65,11 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                             if(sum>YMAX) {
                                 sum = YMAX;
                             }
-                            nnzIdx = atomicAdd(offset,1);
-                            result->colIdxs[nnzIdx] = c;
-                            result->values[nnzIdx] = sum;
-                            result->rowIdxs[nnzIdx] =r ;
+                            nnzIdx++;
+                            nnzIdx1 = atomicAdd(offset,1);
+                            result->colIdxs[nnzIdx1] = c;
+                            result->values[nnzIdx1] = sum;
+                            result->rowIdxs[nnzIdx1] =r ;
                         }    
                     }
                 }
@@ -76,7 +77,7 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
             }
         }
         // result->nnz = nnzIdx;  
-        atomicAdd(&result->nnz, nnzIdx1);     
+        atomicAdd(&result->nnz, nnzIdx);     
     }
 
     // __syncthreads();
