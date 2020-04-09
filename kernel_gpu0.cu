@@ -17,14 +17,14 @@ __device__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs
     unsigned int size = numRows_input;
 
     // --------- Histogram ---------
-    __shared__ unsigned int bins_s[size];
+    __shared__ unsigned int bins_s[10000];
     if(threadIdx.x < size){
         bins_s[threadIdx.x] = 0;
     }
     __syncthreads();
 
     while(i < nnz_input){
-        unsigned char b = rowIdx_input[i];        
+        unsigned char b = rowIdxs_input[i];        
         atomicAdd(&bins_s[b], 1);
         i += stride;
     }
@@ -40,7 +40,8 @@ __global__ void createCSRfromCOO(CSRMatrix* result, COOMatrix* A) {
     
     // Call histogram
     histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
+	__syncthreads();
 
     // Prefix Sum
     if(threadIdx.x == 0){
@@ -55,7 +56,7 @@ __global__ void createCSRfromCOO(CSRMatrix* result, COOMatrix* A) {
     // Binning
     for(unsigned int index = 0; index < A->nnz; ++index) {
         unsigned int row = A->rowIdxs[index];
-        unsigned int i = restult->rowPtrs[row]++;
+        unsigned int i = result->rowPtrs[row]++;
         result->colIdxs[i] = A->colIdxs[index];
         result->values[i] = A->values[index];
     }
@@ -73,14 +74,13 @@ __global__ void createCSRfromCOO(CSRMatrix* result, COOMatrix* A) {
 
 }
 
-__global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int offset) {
+__global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int offset) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
     unsigned int temp;
 
     if(r < A->numRows ){
-        unsigned int x = offset[r];
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
 
@@ -129,7 +129,7 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                             nnzIdx++;
-                            temp= atomicAdd(offset,1);
+                            temp = atomicAdd(&offset,1);
                             result->colIdxs[temp] = c;
                             result->values[temp] = sum;
                             result->rowIdxs[temp] =r ;
