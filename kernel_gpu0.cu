@@ -10,7 +10,7 @@
 
 #define BLOCK_DIM 1024
 
-__device__ void hist(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
+__device__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int stride = blockDim.x * gridDim.x;
@@ -35,142 +35,52 @@ __device__ void hist(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, 
     }
 }
 
-__device__ void prefixSum(CSRMatrix* result, COOMatrix* A) {
 
-    unsigned int i = blockDim.x*blockIdx.x + threadIdx.x;
+__global__ void createCSRfromCOO(CSRMatrix* result, COOMatrix* A) {
     
-    // --------- Kogge-Stone Exclusive -------
-    __shared__ unsigned int buffer1_s[BLOCK_DIM];
-    __shared__ unsigned int buffer2_s[BLOCK_DIM];
-    unsigned int* inBuffer_s = buffer1_s;
-    unsigned int* outBuffer_s = buffer2_s;
-    
+    // Call histogram
+    histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
+    cudaDeviceSynchronize();
+
+    // Prefix Sum
     if(threadIdx.x == 0){
-        inBuffer_s[threadIdx.x] = 0;
-    }else{
-        inBuffer_s[threadIdx.x] = input[i - 1];
-    }
-    __syncthreads();
-    
-    for(unsigned int stride = 1; stride <= BLOCK_DIM/2; stride *= 2){
-        if(threadIdx.x >= stride){
-            outBuffer_s[threadIdx.x] = inBuffer_s[threadIdx.x] + inBuffer_s[threadIdx.x - stride];
-        }else{
-            outBuffer_s[threadIdx.x] = inBuffer_s[threadIdx.x];
+        unsigned int sum = 0;
+        for(unsigned int row = 0; row < A->numRows; ++row) {
+            unsigned int val = result->rowPtrs[row];
+            result->rowPtrs[row] = sum;
+            sum += val;
         }
-        __syncthreads();
-        unsigned int* temp = inBuffer_s;
-        inBuffer_s = outBuffer_s;
-        outBuffer_s = temp;
+        result->rowPtrs[A->numRows] = sum;
+    }
+    // Binning
+    for(unsigned int index = 0; index < A->nnz; ++index) {
+        unsigned int row = A->rowIdxs[index];
+        unsigned int i = restult->rowPtrs[row]++;
+        result->colIdxs[i] = A->colIdxs[index];
+        result->values[i] = A->values[index];
     }
 
-    if(threadIdx.x == BLOCK_DIM - 1){
-        partialSums[blockIdx.x] = inBuffer_s[threadIdx.x] + input[i];
+    // Restore row pointers
+    for(unsigned int row = A->numRows - 1; row > 0; --row) {
+        result->rowPtrs[row] = result->rowPtrs[row - 1];
     }
+    result->rowPtrs[0] = 0;
 
-    output[i] = inBuffer_s[threadIdx.x];
-
-    /*
-    // Prefix sum
-    unsigned int sum = 0;
-    for(unsigned int row = 0; row < A->numRows; ++row) {
-        unsigned int val = rowPtrs[row];
-        rowPtrs[row] = sum;
-        sum += val;
-    }
-    rowPtrs[A->numRows] = sum;
-    */
-}
-
-__device__ void createCSRfromCOO(CSRMatrix* result, COOMatrix* A) {
-    histogram(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
-
-    prefixSum(result, A);
+    result->numRows = A->numRows;
+    result->numCols = A->numCols;
+    result->nnz = A->nnz;
+    result->capacity = A->nnz;
 
 }
 
-__global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
+__global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int offset) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
-    unsigned int nnzIdx0 = 0;
-    unsigned int nnzIdx1 = 0; 
-    __shared__ int offset[BLOCK_DIM];
+    unsigned int nnzIdx = 0;
+    unsigned int temp;
 
     if(r < A->numRows ){
-        unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
-
-        if(nnzA > 0){
-            unsigned int *colIdxsA = A->colIdxs + rowPtrA;
-            float *valueA = A->values + rowPtrA;
-
-            // Loop over B columns
-            for(unsigned int c = 0; c < B->numCols; ++c){
-                unsigned int colPtrB = B->colPtrs[c];
-                unsigned int nnzB = B->colPtrs[c + 1] = colPtrB;
-
-                if(nnzB > 0){
-                    unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
-                    float *valueB = B->values + colPtrB;
-
-                    // Loop and find intersection
-                    float sum = 0;
-                    unsigned int ia = 0;
-                    unsigned int ib = 0;
-
-                    // Loop over segment of non zero elements in the row of A and col of B
-                    while(ia < nnzA && ib < nnzB){
-                        unsigned int colIdx = colIdxsA[ia];
-                        unsigned int rowIdx = rowIdxsB[ib];
-                        if(colIdx < rowIdx) {
-                            ia++;
-                        } else if(colIdx > rowIdx) {
-                            ib++;
-                        } else {
-                            sum += valueA[ia]*valueB[ib];
-                            ia++;
-                            ib++;
-                        }
-                    }
-                    // Sync threads
-                    // Write to Result
-                    if(sum > THRESHOLD || sum < -THRESHOLD) {
-                        sum += bias;
-
-                        // __syncthreads();
-                        
-                        //Remove negative and zero values
-                        if(sum > 0) {
-                            if(sum>YMAX) {
-                                sum = YMAX;
-                            }
-                            ++nnzIdx0;
-                        }    
-                    }
-                }
-            }
-        }
-        offset[r] = nnzIdx0;        
-    }
-    __syncthreads();
-    
-    // Prefix sum
-    if(threadIdx.x == 0){
-        if(r == 0){
-            offset[r] = 0;
-        }
-        else{
-            offset[0] = result->nnz;
-        }
-        for(int i = 1; i<BLOCK_DIM; ++i){
-            offset[i] += offset[i-1];
-        }
-    }
-    __syncthreads();
-    
-
-    if(r < A->numRows ){
-        unsigned int x=offset[r];
+        unsigned int x = offset[r];
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
 
@@ -218,21 +128,18 @@ __global__ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                             if(sum>YMAX) {
                                 sum = YMAX;
                             }
-                            ++nnzIdx1;
-                            result->colIdxs[nnzIdx1 + x] = c;
-                            result->values[nnzIdx1 + x] = sum;
+                            nnzIdx++;
+                            temp= atomicAdd(offset,1);
+                            result->colIdxs[temp] = c;
+                            result->values[temp] = sum;
+                            result->rowIdxs[temp] =r ;
                         }    
                     }
                 }
-                result->rowPtrs[r + 1] = x + nnzIdx1; 
             }
         }
-        // result->nnz = nnzIdx;  
-        atomicAdd(&result->nnz, nnzIdx1);     
+        atomicAdd(&result->nnz, nnzIdx);     
     }
-
-    // __syncthreads();
-
 
 }
 
@@ -279,43 +186,56 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         
     // Allocate memory on GPU
     CSRMatrix *inBuffer_d;
-    CSRMatrix *outBuffer_d;
+    COOMatrix *outBufferCOO_d;
+    CSRMatrix *outBufferCSR_d;
     CSCMatrix *W_d;
 
     cudaMalloc((void **) &inBuffer_d, sizeof(CSRMatrix));
-    cudaMalloc((void **) &outBuffer_d, sizeof(CSRMatrix));
+    cudaMalloc((void **) &outBufferCSR_d, sizeof(CSRMatrix));
     cudaMalloc((void **) &W_d, sizeof(CSCMatrix));
-    
+    cudaMalloc((void **) &outBufferCOO_d, sizeof(COOMatrix));
 
+    cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
+    // cudaMemcpy(outBuffer_d, outBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
+
+    // Configurations
+    const unsigned int threadsPerBlock = BLOCK_DIM;
+    const unsigned int blocksPerGrid = (threadsPerBlock + outBuffer->numRows - 1)/threadsPerBlock;
+        
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
-        // Configurations
-        const unsigned int threadsPerBlock = BLOCK_DIM;
-        const unsigned int blocksPerGrid = (threadsPerBlock + outBuffer->numRows - 1)/threadsPerBlock;
-
+        int offset = 0;
         // Copy data to gpu
-        cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
-        cudaMemcpy(outBuffer_d, outBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
         cudaMemcpy(W_d, W[layer], sizeof(CSRMatrix), cudaMemcpyHostToDevice);
 
         // SpMSpM
         printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
         // spmspm(outBuffer, inBuffer, W[layer], bias);
-        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBuffer_d, inBuffer_d, W_d, bias);
+        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_d, inBuffer_d, W_d, bias,offset);
+        cudaDeviceSynchronize();
+
+        stopTimeAndPrint(&timer, "");
+
+        // printf("Computing layer %u (SpMSpM)", layer);
+        startTime(&timer);
+        createCSRfromCOO <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_d, outBufferCOO_d);
+        cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "");
 
         // Swap buffers
-        CSRMatrix *t = inBuffer;
-        inBuffer = outBuffer;
-        outBuffer = t;
-
-        
+        CSRMatrix *t = inBuffer_d;
+        inBuffer_d = outBufferCSR_d;
+        outBufferCSR_d = t;
     }
+
     // Free data on GPU
+    cudaMemcpy(inBuffer, inBuffer_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+
     cudaFree(inBuffer_d);
-    cudaFree(outBuffer_d);
+    cudaFree(outBufferCSR_d);
+    cudaFree(outBufferCOO_d);
     cudaFree(W_d);
 
     // Find nonzero rows
