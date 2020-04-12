@@ -141,7 +141,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         }
         atomicAdd(&result->nnz, nnzIdx);     
     }
-
+}
 void findNonzeroRows(Vector* v, CSRMatrix* A) {
     unsigned int nnz = 0;
     for(unsigned int r = 0; r < A->numRows; ++r) {
