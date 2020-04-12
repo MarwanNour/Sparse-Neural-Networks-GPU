@@ -10,6 +10,16 @@
 
 #define BLOCK_DIM 1024
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+   if (code != cudaSuccess) 
+   {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
+
 __device__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -189,55 +199,57 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSCMatrix *W_d;
 
     // Allocate structs
-    cudaMalloc((void **) &inBuffer_d, sizeof(CSRMatrix));
-    cudaMalloc((void **) &outBufferCSR_d, sizeof(CSRMatrix));
-    cudaMalloc((void **) &W_d, sizeof(CSCMatrix));
-    cudaMalloc((void **) &outBufferCOO_d, sizeof(COOMatrix));
+    gpuErrchk( cudaMalloc((void **) &inBuffer_d, sizeof(CSRMatrix)));
+    gpuErrchk( cudaMalloc((void **) &outBufferCSR_d, sizeof(CSRMatrix)));
+    gpuErrchk( cudaMalloc((void **) &W_d, sizeof(CSCMatrix)));
+    gpuErrchk( cudaMalloc((void **) &outBufferCOO_d, sizeof(COOMatrix)));
     
     // Allocate arrays
     // in buffer
-    cudaMalloc((void **) &inBuffer_d->rowPtrs, inBuffer->numRows* sizeof(unsigned int));
-    cudaMalloc((void **) &inBuffer_d->colIdxs, inBuffer->numCols* sizeof(unsigned int));
-    cudaMalloc((void **) &inBuffer_d->values, inBuffer->capacity* sizeof(float));
+   gpuErrchk( cudaMalloc((void **) &inBuffer_d->rowPtrs, inBuffer->numRows* sizeof(unsigned int)));
+   gpuErrchk( cudaMalloc((void **) &inBuffer_d->colIdxs, inBuffer->numCols* sizeof(unsigned int)));
+   gpuErrchk( cudaMalloc((void **) &inBuffer_d->values, inBuffer->capacity* sizeof(float)));
     
     // out bufferCSR
-    cudaMalloc((void **) &outBufferCSR_d->rowPtrs, outBufferCSR_d->numRows* sizeof(unsigned int));
-    cudaMalloc((void **) &outBufferCSR_d->colIdxs, outBufferCSR_d->numCols* sizeof(unsigned int));
-    cudaMalloc((void **) &outBufferCSR_d->values, outBufferCSR_d->capacity* sizeof(float));
+   gpuErrchk(  cudaMalloc((void **) &outBufferCSR_d->rowPtrs, outBufferCSR_d->numRows* sizeof(unsigned int)));
+   gpuErrchk(  cudaMalloc((void **) &outBufferCSR_d->colIdxs, outBufferCSR_d->numCols* sizeof(unsigned int)));
+   gpuErrchk(  cudaMalloc((void **) &outBufferCSR_d->values, outBufferCSR_d->capacity* sizeof(float)));
 
     // W
-    cudaMalloc((void **) &W_d->colPtrs, W_d->numCols* sizeof(unsigned int));
-    cudaMalloc((void **) &W_d->rowIdxs, W_d->numRows* sizeof(unsigned int));
-    cudaMalloc((void **) &W_d->values, W_d->capacity* sizeof(float));
+   gpuErrchk(  cudaMalloc((void **) &W_d->colPtrs, W_d->numCols* sizeof(unsigned int)));
+   gpuErrchk(  cudaMalloc((void **) &W_d->rowIdxs, W_d->numRows* sizeof(unsigned int)));
+   gpuErrchk(  cudaMalloc((void **) &W_d->values, W_d->capacity* sizeof(float)));
 
     // out bufferCOO
-    cudaMalloc((void **) &outBufferCOO_d->rowIdxs, outBufferCOO_d->numRows* sizeof(unsigned int));
-    cudaMalloc((void **) &outBufferCOO_d->colIdxs, outBufferCOO_d->numCols* sizeof(unsigned int));
-    cudaMalloc((void **) &outBufferCOO_d->values, outBufferCOO_d->capacity* sizeof(float));
+   gpuErrchk(  cudaMalloc((void **) &outBufferCOO_d->rowIdxs, outBufferCOO_d->numRows* sizeof(unsigned int)));
+   gpuErrchk(  cudaMalloc((void **) &outBufferCOO_d->colIdxs, outBufferCOO_d->numCols* sizeof(unsigned int)));
+   gpuErrchk(  cudaMalloc((void **) &outBufferCOO_d->values, outBufferCOO_d->capacity* sizeof(float)));
 
     // Copy data to gpu
+    printf("Started copying");
     // Copy structs
-    cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
+    gpuErrchk(  cudaMemcpy(inBuffer_d, inBuffer, sizeof(CSRMatrix), cudaMemcpyHostToDevice));
     
     // Copy arrays
     // in buffer
-    cudaMemcpy(inBuffer_d->rowPtrs, inBuffer->rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice);
-    cudaMemcpy(inBuffer_d->colIdxs, inBuffer->colIdxs, inBuffer->numCols*sizeof(unsigned int), cudaMemcpyHostToDevice);
-    cudaMemcpy(inBuffer_d->values, inBuffer->values, inBuffer->capacity*sizeof(float), cudaMemcpyHostToDevice);
+   gpuErrchk(  cudaMemcpy(inBuffer_d->rowPtrs, inBuffer->rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice));
+   gpuErrchk(  cudaMemcpy(inBuffer_d->colIdxs, inBuffer->colIdxs, inBuffer->numCols*sizeof(unsigned int), cudaMemcpyHostToDevice));
+   gpuErrchk(  cudaMemcpy(inBuffer_d->values, inBuffer->values, inBuffer->capacity*sizeof(float), cudaMemcpyHostToDevice));
 
     // Configurations
     const unsigned int threadsPerBlock = BLOCK_DIM;
     const unsigned int blocksPerGrid = (threadsPerBlock + outBuffer->numRows - 1)/threadsPerBlock;
         
+    printf("before forloop");
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
         int offset = 0;        
         // Copy W data to gpu
-        cudaMemcpy(W_d, W[layer], sizeof(CSRMatrix), cudaMemcpyHostToDevice);
-        cudaMemcpy(W_d->colPtrs, W[layer]->colPtrs, W_d->numCols* sizeof(unsigned int), cudaMemcpyHostToDevice);
-        cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice);
-        cudaMemcpy(W_d->colPtrs, W[layer]->values, W_d->capacity* sizeof(float), cudaMemcpyHostToDevice);
+       gpuErrchk( cudaMemcpy(W_d, W[layer], sizeof(CSRMatrix), cudaMemcpyHostToDevice));
+       gpuErrchk( cudaMemcpy(W_d->colPtrs, W[layer]->colPtrs, W_d->numCols* sizeof(unsigned int), cudaMemcpyHostToDevice));
+       gpuErrchk( cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice));
+       gpuErrchk( cudaMemcpy(W_d->colPtrs, W[layer]->values, W_d->capacity* sizeof(float), cudaMemcpyHostToDevice));
         
         // SpMSpM
         printf("Computing layer %u (SpMSpM)", layer);
