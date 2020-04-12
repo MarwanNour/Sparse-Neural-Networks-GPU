@@ -233,8 +233,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     // Copy arrays
     // in buffer
    gpuErrchk(  cudaMemcpy(inBuffer_d->rowPtrs, inBuffer->rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice));
-   gpuErrchk(  cudaMemcpy(inBuffer_d->colIdxs, inBuffer->colIdxs, inBuffer->numCols*sizeof(unsigned int), cudaMemcpyHostToDevice));
-   gpuErrchk(  cudaMemcpy(inBuffer_d->values, inBuffer->values, inBuffer->capacity*sizeof(float), cudaMemcpyHostToDevice));
+   gpuErrchk(  cudaMemcpy(inBuffer_d->colIdxs, inBuffer->colIdxs, inBuffer->nnz*sizeof(unsigned int), cudaMemcpyHostToDevice));
+   gpuErrchk(  cudaMemcpy(inBuffer_d->values, inBuffer->values, inBuffer->nnz*sizeof(float), cudaMemcpyHostToDevice));
 
     // Configurations
     const unsigned int threadsPerBlock = BLOCK_DIM;
@@ -248,8 +248,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         // Copy W data to gpu
        gpuErrchk( cudaMemcpy(W_d, W[layer], sizeof(CSRMatrix), cudaMemcpyHostToDevice));
        gpuErrchk( cudaMemcpy(W_d->colPtrs, W[layer]->colPtrs, W_d->numCols* sizeof(unsigned int), cudaMemcpyHostToDevice));
-       gpuErrchk( cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice));
-       gpuErrchk( cudaMemcpy(W_d->colPtrs, W[layer]->values, W_d->capacity* sizeof(float), cudaMemcpyHostToDevice));
+       gpuErrchk( cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->nnz* sizeof(unsigned int), cudaMemcpyHostToDevice));
+       gpuErrchk( cudaMemcpy(W_d->colPtrs, W[layer]->values, W_d->nnz* sizeof(float), cudaMemcpyHostToDevice));
         
         // SpMSpM
         printf("Computing layer %u (SpMSpM)", layer);
