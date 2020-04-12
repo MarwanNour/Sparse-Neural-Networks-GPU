@@ -262,12 +262,11 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
     // Free data on GPU
     cudaMemcpy(inBuffer, inBuffer_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+    cudaMemcpy(inBuffer->rowPtrs, inBuffer_d->rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(inBuffer->colIdxs,inBuffer_d->colIdxs,  inBuffer->numCols*sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(inBuffer->values,inBuffer_d->values,  inBuffer->capacity*sizeof(float), cudaMemcpyDeviceToHost);
 
-    cudaFree(inBuffer_d);
-    cudaFree(outBufferCSR_d);
-    cudaFree(outBufferCOO_d);
-    cudaFree(W_d);
-
+   
     // Find nonzero rows
     startTime(&timer);
     findNonzeroRows(result, inBuffer);
@@ -280,6 +279,11 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         freeCSC(W[layer]);
     }
     freeCSR(tmp);
+    cudaFree(inBuffer_d);
+    cudaFree(outBufferCSR_d);
+    cudaFree(outBufferCOO_d);
+    cudaFree(W_d);
+
     stopTimeAndPrint(&timer, "Deallocate memory");
 
 }
