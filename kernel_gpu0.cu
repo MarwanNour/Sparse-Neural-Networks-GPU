@@ -272,10 +272,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         int offset = 0;        
         // Copy W data to gpu
-        cudaMemcpy(W_d, W[layer], sizeof(CSRMatrix), cudaMemcpyHostToDevice);
+        cudaMemcpy(W_d, W[layer], sizeof(CSCMatrix), cudaMemcpyHostToDevice);
         cudaMemcpy(W_d->colPtrs, W[layer]->colPtrs, W_d->numCols* sizeof(unsigned int), cudaMemcpyHostToDevice);
-        cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice);
-        cudaMemcpy(W_d->colPtrs, W[layer]->values, W_d->capacity* sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->nnz* sizeof(unsigned int), cudaMemcpyHostToDevice);
+        cudaMemcpy(W_d->values, W[layer]->values, W_d->nnz* sizeof(float), cudaMemcpyHostToDevice);
         
         // SpMSpM
         printf("Computing layer %u (SpMSpM)", layer);
