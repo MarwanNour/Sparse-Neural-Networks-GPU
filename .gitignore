@@ -1,3 +1,5 @@
 spnn*
 *.o
 *.tsv
+data
+.vs/
