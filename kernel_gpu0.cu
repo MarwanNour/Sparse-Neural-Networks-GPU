@@ -140,7 +140,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                             nnzIdx++;
-                            temp = atomicAdd(&offset,1);
+                            temp = atomicAdd(&offset, 1);
                             result->colIdxs[temp] = c;
                             result->values[temp] = sum;
                             result->rowIdxs[temp] =r ;
@@ -152,6 +152,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         atomicAdd(&result->nnz, nnzIdx);     
     }
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> da721be77d0bcb0cb7f4c6413240cfa4d8e1a068
 void findNonzeroRows(Vector* v, CSRMatrix* A) {
     unsigned int nnz = 0;
     for(unsigned int r = 0; r < A->numRows; ++r) {
@@ -193,11 +197,14 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     stopTimeAndPrint(&timer, "Allocate temporary buffer");
         
     // Allocate memory on GPU
+    
+    // ---------- in buffer ------------
     CSRMatrix *inBuffer_d;
-    COOMatrix *outBufferCOO_d;
-    CSRMatrix *outBufferCSR_d;
-    CSCMatrix *W_d;
+    unsigned int *inBuffer_rowPtrs;
+    unsigned int *inBuffer_colIdxs;
+    float *inBuffer_values;
 
+<<<<<<< HEAD
     // Allocate structs
     gpuErrchk( cudaMalloc((void **) &inBuffer_d, sizeof(CSRMatrix)));
     gpuErrchk( cudaMalloc((void **) &outBufferCSR_d, sizeof(CSRMatrix)));
@@ -235,10 +242,83 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
    gpuErrchk(  cudaMemcpy(inBuffer_d->rowPtrs, inBuffer->rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice));
    gpuErrchk(  cudaMemcpy(inBuffer_d->colIdxs, inBuffer->colIdxs, inBuffer->nnz*sizeof(unsigned int), cudaMemcpyHostToDevice));
    gpuErrchk(  cudaMemcpy(inBuffer_d->values, inBuffer->values, inBuffer->nnz*sizeof(float), cudaMemcpyHostToDevice));
+=======
+    // cuda Malloc
+    cudaMalloc((void **) &inBuffer_d, sizeof(CSRMatrix));
+
+    cudaMalloc((void **) &inBuffer_rowPtrs, inBuffer->numRows* sizeof(unsigned int));
+    cudaMalloc((void **) &inBuffer_colIdxs, inBuffer->capacity* sizeof(unsigned int));
+    cudaMalloc((void **) &inBuffer_values, inBuffer->capacity* sizeof(float));
+
+    // cuda memcpy 
+    cudaMemcpy(&(inBuffer_d->rowPtrs), inBuffer_rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(inBuffer_d->colIdxs), inBuffer_colIdxs, inBuffer->capacity* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(inBuffer_d->values), inBuffer_values, inBuffer->capacity* sizeof(float), cudaMemcpyHostToDevice);
+
+    cudaMemcpy(&(inBuffer_d->rowPtrs), inBuffer->rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(inBuffer_d->colIdxs), inBuffer->colIdxs, inBuffer->nnz* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(inBuffer_d->values), inBuffer->values, inBuffer->nnz* sizeof(float), cudaMemcpyHostToDevice);
+
+    // ----------- out buffer COO --------------
+    COOMatrix *outBufferCOO_d;
+    unsigned int *outBufferCOO_rowIdxs;
+    unsigned int *outBufferCOO_colIdxs;
+    float *outBufferCOO_values;
+
+    // cuda Malloc
+    cudaMalloc((void **) &outBufferCOO_d, sizeof(COOMatrix));
+    
+    cudaMalloc((void **) &outBufferCOO_rowIdxs, inBuffer->capacity* sizeof(unsigned int));
+    cudaMalloc((void **) &outBufferCOO_colIdxs, inBuffer->capacity* sizeof(unsigned int));
+    cudaMalloc((void **) &outBufferCOO_values, inBuffer->capacity* sizeof(float));
+    
+    // cuda memcpy 
+    cudaMemcpy(&(outBufferCOO_d->rowIdxs), outBufferCOO_rowIdxs, inBuffer->capacity* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(outBufferCOO_d->colIdxs), outBufferCOO_colIdxs, inBuffer->capacity* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(outBufferCOO_d->values), outBufferCOO_values, inBuffer->capacity* sizeof(float), cudaMemcpyHostToDevice);
+    
+    
+    // ----------- out bufferCSR -----------
+    CSRMatrix *outBufferCSR_d;
+    unsigned int *outBufferCSR_rowPtrs;
+    unsigned int *outBufferCSR_colIdxs;
+    float *outBufferCSR_values;
+
+    // cuda malloc
+    cudaMalloc((void **) &outBufferCSR_d, sizeof(CSRMatrix));
+
+    cudaMalloc((void **) &outBufferCSR_rowPtrs, inBuffer->numRows* sizeof(unsigned int));
+    cudaMalloc((void **) &outBufferCSR_colIdxs, inBuffer->capacity* sizeof(unsigned int));
+    cudaMalloc((void **) &outBufferCSR_values, inBuffer->capacity* sizeof(float));
+
+    // cuda memcpy 
+    cudaMemcpy(&(outBufferCSR_d->rowPtrs), outBufferCSR_rowPtrs, inBuffer->numRows* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(outBufferCSR_d->colIdxs), outBufferCSR_colIdxs, inBuffer->capacity* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(outBufferCSR_d->values), outBufferCSR_values, inBuffer->capacity* sizeof(float), cudaMemcpyHostToDevice);
+    
+    // -------------- W ----------------
+    CSCMatrix *W_d;
+    unsigned int *W_colPtrs;
+    unsigned int *W_rowIdxs;
+    float *W_values;
+
+    // cuda malloc
+    cudaMalloc((void **) &W_d, sizeof(CSCMatrix));
+
+    cudaMalloc((void **) &W_colPtrs, W[0]->numCols* sizeof(unsigned int));
+    cudaMalloc((void **) &W_rowIdxs, W[0]->capacity* sizeof(unsigned int));
+    cudaMalloc((void **) &W_values, W[0]->capacity* sizeof(float));
+
+    // cuda memcpy 
+    cudaMemcpy(&(W_d->colPtrs), W_colPtrs, W[0]->numCols* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(W_d->rowIdxs), W_rowIdxs, W[0]->capacity* sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(&(W_d->values), W_values, W[0]->capacity* sizeof(float), cudaMemcpyHostToDevice);
+ 
+>>>>>>> da721be77d0bcb0cb7f4c6413240cfa4d8e1a068
 
     // Configurations
     const unsigned int threadsPerBlock = BLOCK_DIM;
-    const unsigned int blocksPerGrid = (threadsPerBlock + outBuffer->numRows - 1)/threadsPerBlock;
+    const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
         
     printf("before forloop");
     // Loop over layers
@@ -246,10 +326,17 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         int offset = 0;        
         // Copy W data to gpu
+<<<<<<< HEAD
        gpuErrchk( cudaMemcpy(W_d, W[layer], sizeof(CSRMatrix), cudaMemcpyHostToDevice));
        gpuErrchk( cudaMemcpy(W_d->colPtrs, W[layer]->colPtrs, W_d->numCols* sizeof(unsigned int), cudaMemcpyHostToDevice));
        gpuErrchk( cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->nnz* sizeof(unsigned int), cudaMemcpyHostToDevice));
        gpuErrchk( cudaMemcpy(W_d->colPtrs, W[layer]->values, W_d->nnz* sizeof(float), cudaMemcpyHostToDevice));
+=======
+        cudaMemcpy(W_d, W[layer], sizeof(CSCMatrix), cudaMemcpyHostToDevice);
+        cudaMemcpy(W_d->colPtrs, W[layer]->colPtrs, W_d->numCols* sizeof(unsigned int), cudaMemcpyHostToDevice);
+        cudaMemcpy(W_d->rowIdxs, W[layer]->rowIdxs, W_d->nnz* sizeof(unsigned int), cudaMemcpyHostToDevice);
+        cudaMemcpy(W_d->values, W[layer]->values, W_d->nnz* sizeof(float), cudaMemcpyHostToDevice);
+>>>>>>> da721be77d0bcb0cb7f4c6413240cfa4d8e1a068
         
         // SpMSpM
         printf("Computing layer %u (SpMSpM)", layer);
