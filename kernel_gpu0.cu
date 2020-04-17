@@ -289,7 +289,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaFree(inBuffer_d.rowPtrs);
     cudaFree(inBuffer_d.colIdxs);
     cudaFree(inBuffer_d.values);
-    cudaFree(inbuffer_p_d);
+    cudaFree(inBuffer_p_d);
 
     // ----------- out buffer COO -----------
     cudaFree(outBufferCOO_d.rowIdxs);
