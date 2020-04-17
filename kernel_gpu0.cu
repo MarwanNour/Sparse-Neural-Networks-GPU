@@ -220,7 +220,6 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *outBufferCSR_p_d;
     cudaMalloc((void **) &outBufferCSR_p_d, sizeof(CSRMatrix));
 
-    
     // -------------- W ----------------
     CSCMatrix W_d;
     W_d.numRows = W[0]->numRows;
@@ -279,13 +278,36 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         outBufferCSR_d = t;
     }
 
+    // Copy data from GPU to CPU
+    cudaMemcpy(&inBuffer_d, inBuffer_p_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+    cudaMemcpy(inBuffer.rowPtrs, inBuffer_d.rowPtrs, (inbuffer_d.numRows + 1) * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(inBuffer.colIdxs, inbuffer_d.colIdxs, inBuffer_d.nnz * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(inBuffer.values, inbuffer_d.values, inBuffer_d.nnz * sizeof(float), cudaMemcpyDeviceToHost);
+    
     // Free data on GPU
-    cudaMemcpy(inBuffer, inBuffer_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+    // ---------- in buffer ------------
+    cudaFree(inbuffer_d.rowPtrs);
+    cudaFree(inbuffer_d.colIdxs);
+    cudaFree(inbuffer_d.values);
+    cudaFree(inbuffer_p_d);
 
-    cudaFree(inBuffer_d);
-    cudaFree(outBufferCSR_d);
-    cudaFree(outBufferCOO_d);
-    cudaFree(W_d);
+    // ----------- out buffer COO -----------
+    cudaFree(outBufferCOO_d.rowIdxs);
+    cudaFree(outBufferCOO_d.colIdxs);
+    cudaFree(outBufferCOO_d.values);
+    cudaFree(outBufferCOO_p_d);
+
+    // ----------- out bufferCSR -----------
+    cudaFree(outBufferCSR_d.rowPtrs);
+    cudaFree(outBufferCSR_d.colIdxs);
+    cudaFree(outBufferCSR_d.values);
+    cudaFree(outBufferCSR_p_d);
+
+    // -------------- W ----------------
+    cudaFree(W_d.colPtrs);
+    cudaFree(W_d.rowIdxs);
+    cudaFree(W_d.values);
+    cudaFree(W_p_d);
 
     // Find nonzero rows
     startTime(&timer);
