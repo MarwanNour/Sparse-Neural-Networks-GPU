@@ -204,7 +204,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     outBufferCOO_d.capacity = outBuffer->capacity;
     cudaMalloc((void **) &outBufferCOO_d.rowIdxs, outBufferCOO_d.numRows * sizeof(unsigned int));
     cudaMalloc((void **) &outBufferCOO_d.colIdxs, outBufferCOO_d.numCols * sizeof(unsigned int));
-    cudaMalloc((void **) &outBufferCOO_d.values, outBufferCOO_d.nnz * sizeof(unsigned int));
+    cudaMalloc((void **) &outBufferCOO_d.values, outBufferCOO_d.nnz * sizeof(float));
     COOMatrix *outBufferCOO_p_d;
     cudaMalloc((void **) &outBufferCOO_p_d, sizeof(COOMatrix));
 
