@@ -57,7 +57,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     //     }
     //     result->rowPtrs[A->numRows] = sum;
     // }
-    thrust::exclusive_scan(thrust::device, result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
+    thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
     __syncthreads();
 
     // Binning
@@ -86,7 +86,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
         int col_index =  result->rowPtrs[i];
         int col_index_one = result->rowPtrs[i + 1];
 
-        thrust::sort_by_key(thrust::device, result->colIdxs[col_index], result->colIdxs[col_index_one], result->values);
+        thrust::sort_by_key((result->colIdxs[col_index]), (result->colIdxs[col_index_one] - 1), (result->values));
     }
     __syncthreads();
 
