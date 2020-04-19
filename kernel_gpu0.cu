@@ -1,6 +1,9 @@
 
 #include <stdio.h>
 
+#include <thrust/sort.h>
+#include <thrust/scan.h>
+
 #include "kernel.h"
 #include "matrix.h"
 #include "timer.h"
@@ -10,7 +13,7 @@
 
 #define BLOCK_DIM 1024
 
-__device__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
+__global__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     unsigned int stride = blockDim.x * gridDim.x;
@@ -38,23 +41,28 @@ __device__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs
 
 __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     
+
+    unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     // Call histogram
     histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
     //cudaDeviceSynchronize();
 	__syncthreads();
 
     // Prefix Sum
-    if(threadIdx.x == 0){
-        unsigned int sum = 0;
-        for(unsigned int row = 0; row < A->numRows; ++row) {
-            unsigned int val = result->rowPtrs[row];
-            result->rowPtrs[row] = sum;
-            sum += val;
-        }
-        result->rowPtrs[A->numRows] = sum;
-    }
+    // if(threadIdx.x == 0){
+    //     unsigned int sum = 0;
+    //     for(unsigned int row = 0; row < A->numRows; ++row) {
+    //         unsigned int val = result->rowPtrs[row];
+    //         result->rowPtrs[row] = sum;
+    //         sum += val;
+    //     }
+    //     result->rowPtrs[A->numRows] = sum;
+    // }
+    thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
+    __syncthreads();
 
     // Binning
+    if(i=0){
     for(unsigned int index = 0; index < A->nnz; ++index) {
         unsigned int row = A->rowIdxs[index];
         unsigned int i = result->rowPtrs[row]++;
@@ -62,20 +70,29 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
         result->values[i] = A->values[index];
     }
 
+
     // Restore row pointers
     for(unsigned int row = A->numRows - 1; row > 0; --row) {
         result->rowPtrs[row] = result->rowPtrs[row - 1];
     }
-    result->rowPtrs[0] = 0;
+}
 
+    if(i==0){
+    result->rowPtrs[0] = 0;
     result->numRows = A->numRows;
     result->numCols = A->numCols;
     result->nnz = A->nnz;
     result->capacity = A->nnz;
+    }
+
+    if( i< A->numRows){
+    thrust::sort_by_key(result->colIdx[result->rowPtrs[i]], result->colIdx[result->rowPtrs[i+1]], result->values);
+    }
+    __syncthreads()
 
 }
 
-__global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int offset) {
+__global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int *offset) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
@@ -246,11 +263,12 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     // Configurations
     const unsigned int threadsPerBlock = BLOCK_DIM;
     const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
-        
+    
+    int *offset ;
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
-        int offset = 0;        
+        *offset= 0;       
         // Copy W data to gpu
         cudaMemcpy(W_d.colPtrs, W[layer]->colPtrs, (W_d.numCols + 1)* sizeof(unsigned int), cudaMemcpyHostToDevice);
         cudaMemcpy(W_d.rowIdxs, W[layer]->rowIdxs, W_d.numRows * W_d.numCols * sizeof(unsigned int), cudaMemcpyHostToDevice);
@@ -268,9 +286,13 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         // printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
+        // histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz)
         createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
+        
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "");
+        
+        thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
 
         // Swap buffers
         CSRMatrix *t = inBuffer_p_d;
