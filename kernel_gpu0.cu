@@ -56,37 +56,35 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     //     }
     //     result->rowPtrs[A->numRows] = sum;
     // }
-    thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
+    thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
     __syncthreads();
 
     // Binning
-    if(i=0){
-    for(unsigned int index = 0; index < A->nnz; ++index) {
-        unsigned int row = A->rowIdxs[index];
-        unsigned int i = result->rowPtrs[row]++;
-        result->colIdxs[i] = A->colIdxs[index];
-        result->values[i] = A->values[index];
-    }
+    if(i == 0){
+        for(unsigned int index = 0; index < A->nnz; ++index) {
+            unsigned int row = A->rowIdxs[index];
+            unsigned int i = result->rowPtrs[row]++;
+            result->colIdxs[i] = A->colIdxs[index];
+            result->values[i] = A->values[index];
+        }
 
 
-    // Restore row pointers
-    for(unsigned int row = A->numRows - 1; row > 0; --row) {
-        result->rowPtrs[row] = result->rowPtrs[row - 1];
-    }
-}
+        // Restore row pointers
+        for(unsigned int row = A->numRows - 1; row > 0; --row) {
+            result->rowPtrs[row] = result->rowPtrs[row - 1];
+        }
 
-    if(i==0){
-    result->rowPtrs[0] = 0;
-    result->numRows = A->numRows;
-    result->numCols = A->numCols;
-    result->nnz = A->nnz;
-    result->capacity = A->nnz;
+        result->rowPtrs[0] = 0;
+        result->numRows = A->numRows;
+        result->numCols = A->numCols;
+        result->nnz = A->nnz;
+        result->capacity = A->nnz;
     }
 
     if( i< A->numRows){
-    thrust::sort_by_key(result->colIdx[result->rowPtrs[i]], result->colIdx[result->rowPtrs[i+1]], result->values);
+        thrust::sort_by_key(result->colIdx[result->rowPtrs[i]], result->colIdxs[result->rowPtrs[i + 1]], result->values);
     }
-    __syncthreads()
+    __syncthreads();
 
 }
 
