@@ -82,7 +82,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     }
 
     if( i< A->numRows){
-        thrust::sort_by_key(result->colIdx[result->rowPtrs[i]], result->colIdxs[result->rowPtrs[i + 1]], result->values);
+        thrust::sort_by_key(result->colIdxs[result->rowPtrs[i]], result->colIdxs[result->rowPtrs[i + 1]], result->values);
     }
     __syncthreads();
 
@@ -143,7 +143,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                             nnzIdx++;
-                            temp = atomicAdd(&offset, 1);
+                            temp = atomicAdd(offset, 1);
                             result->colIdxs[temp] = c;
                             result->values[temp] = sum;
                             result->rowIdxs[temp] =r ;
@@ -282,14 +282,14 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         // printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
-        histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz)
+        histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
         cudaDeviceSynchronize();
         
         createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "");
         
-        thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
+        // thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
 
         // Swap buffers
         CSRMatrix *t = inBuffer_p_d;
