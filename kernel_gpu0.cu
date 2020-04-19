@@ -3,6 +3,7 @@
 
 #include <thrust/sort.h>
 #include <thrust/scan.h>
+#include <thrust/execution_policy.h>
 
 #include "kernel.h"
 #include "matrix.h"
@@ -56,7 +57,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     //     }
     //     result->rowPtrs[A->numRows] = sum;
     // }
-    thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
+    thrust::exclusive_scan(thrust::device, result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
     __syncthreads();
 
     // Binning
@@ -82,7 +83,10 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     }
 
     if( i< A->numRows){
-        thrust::sort_by_key(result->colIdxs[result->rowPtrs[i]], result->colIdxs[result->rowPtrs[i + 1]], result->values);
+        int col_index =  result->rowPtrs[i];
+        int col_index_one = result->rowPtrs[i + 1];
+
+        thrust::sort_by_key(thrust::device, result->colIdxs[col_index], result->colIdxs[col_index_one], result->values);
     }
     __syncthreads();
 
