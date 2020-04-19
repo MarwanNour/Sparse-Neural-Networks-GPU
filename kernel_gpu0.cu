@@ -44,7 +44,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     // Call histogram
-    histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
+    // histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
     //cudaDeviceSynchronize();
 	__syncthreads();
 
@@ -286,9 +286,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         // printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
-        // histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz)
-        createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
+        histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz)
+        cudaDeviceSynchronize();
         
+        createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "");
         
