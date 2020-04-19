@@ -45,8 +45,6 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     // Call histogram
     // histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
-    //cudaDeviceSynchronize();
-	__syncthreads();
 
     // Prefix Sum
     // if(threadIdx.x == 0){
