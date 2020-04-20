@@ -308,8 +308,9 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     // Configurations
     const unsigned int threadsPerBlock = BLOCK_DIM;
     const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
-
-    int *offset ;
+    int x=0
+    int *offset=&x ;
+    
     CSRMatrix *t ;
     cudaMalloc((void **) &t, sizeof(CSRMatrix));
     // Loop over layers
