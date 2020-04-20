@@ -320,7 +320,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         // spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
         
 
-        stopTimeAndPrint(&timer, "%d" %(layer));
+        stopTimeAndPrint(&timer, "layer");
         cudaDeviceSynchronize();
 
         startTime(&timer);
