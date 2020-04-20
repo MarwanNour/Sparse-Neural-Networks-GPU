@@ -97,7 +97,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
     unsigned int temp;
-
+    printf(A->numRows)
     if(r < A->numRows ){
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
@@ -310,6 +310,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
 
     int *offset ;
+    CSRMatrix *t ;
+    cudaMalloc((void **) &t, sizeof(CSRMatrix));
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
@@ -325,7 +327,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         startTime(&timer);
       
-        // spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
+        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
         cudaDeviceSynchronize();
 
         stopTimeAndPrint(&timer, "spmspm");
@@ -342,7 +344,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         // thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
 
         // Swap buffers
-        CSRMatrix *t = inBuffer_p_d;
+       
+        t = inBuffer_p_d;
         inBuffer_p_d = outBufferCSR_p_d;
         outBufferCSR_p_d = t;
     }
