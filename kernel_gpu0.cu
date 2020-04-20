@@ -242,7 +242,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     //emptycoo
     COOMatrix* coo = (COOMatrix*) malloc(sizeof(COOMatrix));
     coo->numRows = inBuffer->numRows;
-    coo->numCols = inBuffer->numCols..;
+    coo->numCols = inBuffer->numCols;
     coo->nnz = inBuffer->nnz;
     coo->capacity = inBuffer_d.numRows * inBuffer_d.numCols;
     unsigned int *rowIdxs = (unsigned int *)malloc(inBuffer_d.numRows * inBuffer_d.numCols*sizeof(unsigned int));
