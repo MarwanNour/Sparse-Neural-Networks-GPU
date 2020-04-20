@@ -189,7 +189,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     startTime(&timer);
     CSCMatrix* W[numLayers];
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
-        CSCMatrix W_h = createCSCfromCOO(layerWeights[layer]);
+        CSCMatrix *W_h = createCSCfromCOO(layerWeights[layer]);
         CSCMatrix W_d;
         W_d.numRows = W_h->numRows;
         W_d.numCols = W_h->numCols;
@@ -225,7 +225,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaMalloc((void **) &inBuffer_d.rowPtrs, (inBuffer_d.numRows + 1) * sizeof(unsigned int));
     cudaMalloc((void **) &inBuffer_d.colIdxs, inBuffer_d.capacity * sizeof(unsigned int));
     cudaMalloc((void **) &inBuffer_d.values, inBuffer_d.capacity * sizeof(float));
-    
+
     CSRMatrix *inBuffer_p_d;
     cudaMalloc((void **) &inBuffer_p_d, sizeof(CSRMatrix));
 
@@ -283,7 +283,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         printf("Computing layer %u (SpMSpM)", layer);
         startTime(&timer);
         // spmspm(outBuffer, inBuffer, W[layer], bias);
-        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W_p_d, bias,offset);
+        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
         cudaDeviceSynchronize();
 
         stopTimeAndPrint(&timer, "");
@@ -331,10 +331,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaFree(outBufferCSR_p_d);
 
     // -------------- W ----------------
-    cudaFree(W_d.colPtrs);
-    cudaFree(W_d.rowIdxs);
-    cudaFree(W_d.values);
-    cudaFree(W_p_d);
+    // cudaFree(W_d.colPtrs);
+    // cudaFree(W_d.rowIdxs);
+    // cudaFree(W_d.values);
+    // cudaFree(W_p_d);
 
     // Find nonzero rows
     startTime(&timer);
@@ -345,7 +345,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     startTime(&timer);
     freeCSR(Y0);
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
-        freeCSC(W[layer]);
+        cudaFree(W[layer]);
+        cudaFree(W[layer].colPtrs);
+        cudaFree(W[layer].rowIdxs);
+        cudaFree(W[layer].values);
     }
     freeCSR(tmp);
     stopTimeAndPrint(&timer, "Deallocate memory");
