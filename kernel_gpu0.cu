@@ -281,7 +281,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaMalloc((void **) &outBufferCSR_p_d, sizeof(CSRMatrix));
 
 
-    cudaMemcpy(outBufferCSR_d.rowIdxs, temp->rowIdxs, (coo->numRows + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(outBufferCSR_d.rowIdxs, temp->rowPtrs, (coo->numRows + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
     cudaMemcpy(outBufferCSR_d.colIdxs, temp->colIdxs, coo->capacity * sizeof(unsigned int), cudaMemcpyHostToDevice);
     cudaMemcpy(outBufferCSR_d.values, temp->values, coo->capacity * sizeof(float), cudaMemcpyHostToDevice);
   
