@@ -131,6 +131,5 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     }
     freeCSR(tmp);
     stopTimeAndPrint(&timer, "Deallocate memory");
-
 }
 

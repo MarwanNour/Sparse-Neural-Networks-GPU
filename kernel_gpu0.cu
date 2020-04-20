@@ -160,21 +160,48 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     }
 }
 
-void findNonzeroRows(Vector* v, CSRMatrix* A) {
-    unsigned int nnz = 0;
-    for(unsigned int r = 0; r < A->numRows; ++r) {
-        unsigned int rowPtrA = A->rowPtrs[r];
-        unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;
-        if(nnzA > 0) {
-            if(nnz >= v->capacity) {
+__global__ findNonzeroRows_kernel(Vector* v, CSRMatrix* A, int* nonzero)
+{
+    unsigned int row_thread = blockDim.x * blockIdx.x + threadIdx.x;
+    
+    //each thread takes one row to count
+    if(row_thread < A->numRows)
+    {
+        unsigned int rowPtrA = A->rowPtrs[row_thread];
+        unsigned int nnzA = A->rowPtrs[row_thread + 1] - rowPtrA;
+        if(nnzA > 0)
+        {
+            if(*nonzero >= v->capacity)
+            {
                 expandVectorCapacity(v, 2*v->capacity);
             }
-            v->data[nnz] = r;
-            ++nnz;
+            v->data[nonzero] = row_thread;
+            //add to the global variable;
+            atomicAdd(nonzero,1);
+            
+            __syncthreads();
+
         }
     }
-    v->nnz = nnz;
+
+    v->nnz = *nonzero;
 }
+
+// void findNonzeroRows(Vector* v, CSRMatrix* A) {
+//     unsigned int nnz = 0;
+//     for(unsigned int r = 0; r < A->numRows; ++r) {
+//         unsigned int rowPtrA = A->rowPtrs[r];
+//         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;
+//         if(nnzA > 0) {
+//             if(nnz >= v->capacity) {
+//                 expandVectorCapacity(v, 2*v->capacity);
+//             }
+//             v->data[nnz] = r;
+//             ++nnz;
+//         }
+//     }
+//     v->nnz = nnz;
+// }
 
 void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeights, float bias, unsigned int numLayers) {
 
@@ -334,7 +361,11 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
     // Find nonzero rows
     startTime(&timer);
-    findNonzeroRows(result, inBuffer);
+    // findNonzeroRows(result, inBuffer);
+    //create global variable nonzero
+    int* nonzero;
+    *nonzero = 0;
+    findNonzeroRows_kernel<<<blocksPerGrid,threadsPerBlock>>> (result,inBuffer,nonzero);
     stopTimeAndPrint(&timer, "Find nonzero rows");
 
     // Free buffers
