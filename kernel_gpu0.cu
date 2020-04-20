@@ -43,14 +43,14 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
-if(i==0){
-    result->rowPtrs=0;
-}
-if(i<A->numRows){
-    int count = thrust::count(thrust::device ,A->rowIdxs, A->rowIdxs+A->nnz, i);
-    result->rowPtrs[i+1]=count;
-}
-__syncthreads();
+    if(i==0){
+        result->rowPtrs=0;
+    }
+    if(i<A->numRows){
+        int count = thrust::count(thrust::device ,A->rowIdxs, A->rowIdxs+A->nnz, i);
+        result->rowPtrs[i+1]=count;
+    }
+    __syncthreads();
 // Call histogram
     // histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
 
@@ -215,6 +215,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         cudaMemcpy(W[layer], &W_d, sizeof(CSCMatrix), cudaMemcpyHostToDevice);
     }
+    cudaDeviceSynchronize();
     stopTimeAndPrint(&timer, "Convert weights to CSR");
 
 
@@ -341,10 +342,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         stopTimeAndPrint(&timer, "spmspm");
 
        
-        startTime(&timer);
-        // histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
-        cudaDeviceSynchronize();
-        stopTimeAndPrint(&timer, "histogram done");
+        // startTime(&timer);
+        // // histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
+        // cudaDeviceSynchronize();
+        // stopTimeAndPrint(&timer, "histogram done");
         startTime(&timer);
         createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
@@ -357,6 +358,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         t = inBuffer_p_d;
         inBuffer_p_d = outBufferCSR_p_d;
         outBufferCSR_p_d = t;
+        cudaDeviceSynchronize();
+
     }
 
     // Copy data from GPU to CPU
