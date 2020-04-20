@@ -13,7 +13,6 @@
 #define YMAX 32
 
 #define BLOCK_DIM 1024
-histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
 __global__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
