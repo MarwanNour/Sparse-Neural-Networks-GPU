@@ -50,7 +50,7 @@ if(i<A->numRows){
     int count = thrust::count(thrust::device ,A->rowIdxs, A->rowIdxs+A->nnz, i);
     result->rowPtrs[i+1]=count;
 }
-__syncthreads()
+__syncthreads();
 // Call histogram
     // histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
 
