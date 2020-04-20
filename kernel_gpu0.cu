@@ -13,7 +13,7 @@
 #define YMAX 32
 
 #define BLOCK_DIM 1024
-
+histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
 __global__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
@@ -315,7 +315,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaMalloc((void **) &t, sizeof(CSRMatrix));
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
-
+        printf("Computing layer %u (SpMSpM)", layer);
         *offset= 0;
         // Copy W data to gpu
         startTime(&timer);
@@ -333,7 +333,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         stopTimeAndPrint(&timer, "spmspm");
 
-        // printf("Computing layer %u (SpMSpM)", layer);
+       
         startTime(&timer);
         histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
         cudaDeviceSynchronize();
