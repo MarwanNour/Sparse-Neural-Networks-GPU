@@ -97,7 +97,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
     unsigned int temp;
-    printf(A->numRows)
+ 
     if(r < A->numRows ){
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
