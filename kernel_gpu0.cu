@@ -315,10 +315,14 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         *offset= 0;
         // Copy W data to gpu
-       
+        startTime(&timer);
+        // spmspm(outBuffer, inBuffer, W[layer], bias);
+        // spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
+        
 
-        // SpMSpM
-        printf("Computing layer %u (SpMSpM)", layer);
+        stopTimeAndPrint(&timer, "%d" %(layer));
+        cudaDeviceSynchronize();
+
         startTime(&timer);
         // spmspm(outBuffer, inBuffer, W[layer], bias);
         spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
