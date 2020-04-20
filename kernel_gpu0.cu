@@ -109,7 +109,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
             // Loop over B columns
             for(unsigned int c = 0; c < B->numCols; ++c){
                 unsigned int colPtrB = B->colPtrs[c];
-                unsigned int nnzB = B->colPtrs[c + 1] = colPtrB;
+                unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
 
                 if(nnzB > 0){
                     unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
