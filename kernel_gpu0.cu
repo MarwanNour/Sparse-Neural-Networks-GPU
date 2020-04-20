@@ -346,9 +346,9 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     freeCSR(Y0);
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
         cudaFree(W[layer]);
-        cudaFree(W[layer].colPtrs);
-        cudaFree(W[layer].rowIdxs);
-        cudaFree(W[layer].values);
+        cudaFree(W[layer]->colPtrs);
+        cudaFree(W[layer]->rowIdxs);
+        cudaFree(W[layer]->values);
     }
     freeCSR(tmp);
     stopTimeAndPrint(&timer, "Deallocate memory");
