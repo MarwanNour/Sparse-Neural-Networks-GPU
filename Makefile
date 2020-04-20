@@ -21,7 +21,7 @@ default: $(EXE_CPU) $(EXE_GPU0) $(EXE_GPU1) $(EXE_GPU2) $(EXE_GPU3)
 	$(NVCC) $(NVCC_FLAGS) -c -o $@ $<
 
 $(EXE_CPU): $(OBJ_CPU)
-	$(NVCC) $(NVCC_FLAGS) $(OBJ_CPU) -o $(EXE_CPU)
+	$(NVCC) -g -G $(NVCC_FLAGS) $(OBJ_CPU) -o $(EXE_CPU)
 
 $(EXE_GPU0): $(OBJ_GPU0)
 	$(NVCC) $(NVCC_FLAGS) $(OBJ_GPU0) -o $(EXE_GPU0)
