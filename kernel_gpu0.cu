@@ -236,6 +236,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaMemcpy(inBuffer_p_d, &inBuffer_d, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
 
     // ----------- out buffer COO --------------
+    
     COOMatrix outBufferCOO_d;
     outBufferCOO_d.numRows = inBuffer_d.numRows;
     outBufferCOO_d.numCols = inBuffer_d.numCols;
@@ -247,7 +248,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     COOMatrix *outBufferCOO_p_d;
     cudaMalloc((void **) &outBufferCOO_p_d, sizeof(COOMatrix));
 
-    cudaMemcpy(outBufferCOO_p_d, &outBufferCOO_d, sizeof(CSRMatrix), cudaMemcpyHostToDevice);
+    cudaMemcpy(outBufferCOO_p_d, &outBufferCOO_d, sizeof(COOMatrix), cudaMemcpyHostToDevice);
 
 
 
@@ -274,7 +275,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     // Copy data from CPU to GPU
     cudaDeviceSynchronize();
 
-    // ---------- in buffer ------------
+
   
 
 
