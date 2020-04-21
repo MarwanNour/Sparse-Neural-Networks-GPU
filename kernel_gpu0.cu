@@ -402,7 +402,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         
         cudaDeviceSynchronize();
 
-        printf("inbuffer nnz =%d",inBuffer_d->nnz);
+        printf("inbuffer nnz =%d",inBuffer_d.nnz);
        
         t = inBuffer_p_d;
         inBuffer_p_d = outBufferCSR_p_d;
