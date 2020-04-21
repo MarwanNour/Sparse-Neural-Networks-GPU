@@ -78,6 +78,12 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
+    if(i==0){
+        for(unsigned int i = 0; i < A->nnz; ++i) {
+            unsigned int row = A->rowIdxs[i];
+            result->rowPtrs[row]++;
+        }
+    }
     // if(i==0){
     //     result->rowPtrs=0;
     // }
@@ -380,10 +386,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         stopTimeAndPrint(&timer, "spmspm");
 
        
-        startTime(&timer);
-        histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->nnz);
-        cudaDeviceSynchronize();
-        stopTimeAndPrint(&timer, "histogram done");
+        // startTime(&timer);
+        // histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->nnz);
+        // cudaDeviceSynchronize();
+        // stopTimeAndPrint(&timer, "histogram done");
         startTime(&timer);
         createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
