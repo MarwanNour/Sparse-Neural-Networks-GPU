@@ -21,38 +21,55 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
       if (abort) exit(code);
    }
 } 
-
+#define PRIVATE 4096
 #define BLOCK_DIM 1024
-__global__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs_result, unsigned int numRows_input, unsigned int nnz_input){
+__global__ void histogram_gpu(unsigned int* input, unsigned int* bins, unsigned int numElems){
 
-    unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
-    unsigned int stride = blockDim.x * gridDim.x;
-    unsigned int size = numRows_input;
+    int tx = threadIdx.x; int bx = blockIdx.x;
 
-    // --------- Histogram ---------
-    __shared__ unsigned int bins_s[10000];
-    if(threadIdx.x < size){
-        bins_s[threadIdx.x] = 0;
+    // compute global thread coordinates
+    int i = (bx * blockDim.x) + tx;
+
+    // create a private histogram copy for each thread block
+    __shared__ unsigned int hist[PRIVATE];
+
+    // each thread must initialize more than 1 location
+    if (PRIVATE > BLOCK_DIM) {
+        for (int j=tx; j<PRIVATE; j+=BLOCK_DIM) {
+            if (j < PRIVATE) {
+                hist[j] = 0;
+            }
+        }
     }
-    if(i<numRows_input){
-        rowPtrs_result[i]=0;
+    // use the first `PRIVATE` threads of each block to init
+    else {
+        if (tx < PRIVATE) {
+            hist[tx] = 0;
+        }
     }
+    // wait for all threads in the block to finish
     __syncthreads();
 
-    while(i < nnz_input){
-        unsigned char b = rowIdxs_input[i];
-        if(b>1000){
-            atomicAdd(&rowPtrs_result[b], 1);
-        }
-        else{
-        atomicAdd(&bins_s[b], 1);
-        }
-        i += stride;
+    // update private histogram
+    if (i < numElems) {
+        atomicAdd(&(hist[input[i]]), 1);
     }
+    // wait for all threads in the block to finish
     __syncthreads();
 
-    if(threadIdx.x < size){
-        atomicAdd(&rowPtrs_result[threadIdx.x], bins_s[threadIdx.x]);
+    // each thread must update more than 1 location
+    if (PRIVATE > BLOCK_DIM) {
+        for (int j=tx; j<PRIVATE; j+=BLOCK_DIM) {
+            if (j < PRIVATE) {
+                atomicAdd(&(bins[j]), hist[j]);
+            }
+        }
+    }
+    // use the first `PRIVATE` threads to update final histogram
+    else {
+        if (tx < PRIVATE) {
+            atomicAdd(&(bins[tx]), hist[tx]);
+        }
     }
 }
 
