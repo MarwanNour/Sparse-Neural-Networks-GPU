@@ -399,6 +399,9 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         // Swap buffers
         cudaMemcpy(&inBuffer_d, outBufferCSR_p_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+        
+        cudaDeviceSynchronize();
+
         printf("inbuffer nnz =%d",inbuffer->nnz);
        
         t = inBuffer_p_d;
