@@ -129,7 +129,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
         result->numRows = A->numRows;
         result->numCols = A->numCols;
         result->nnz = A->nnz;
-        result->capacity = A->nnz;
+        result->capacity = A->capacity;
     }
 
     if( i< A->numRows){
