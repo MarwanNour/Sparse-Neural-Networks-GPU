@@ -109,13 +109,12 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 }
 
-__global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias, int *offset) {
+__global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
     unsigned int temp=0;
-    __shared__ int x;
-    x=*offset;
+
  
     if(r < A->numRows ){
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
@@ -166,7 +165,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                             nnzIdx++;
-                            temp = atomicAdd(&x, 1);
+                            temp = atomicAdd(&result->nnz, 1);
                             result->colIdxs[temp] = c;
                             result->values[temp] = sum;
                             result->rowIdxs[temp] =r ;
@@ -175,7 +174,6 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                 }
             }
         }
-        atomicAdd(&result->nnz, nnzIdx);
     }
 }
 
@@ -329,7 +327,9 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     const unsigned int threadsPerBlock = BLOCK_DIM;
     const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
 
-    int *offset=(int*)malloc(sizeof(int));
+
+
+
     
     
     CSRMatrix *t ;
@@ -337,18 +337,16 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
         printf("Computing layer %u (SpMSpM)", layer);
-        *offset= 0;
-        printf("%d\n",*offset);
-        printf("%d\n",offset);
+
 
         // Copy W data to gpu
       
 
         startTime(&timer);
       
-        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
+        spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias);
         // cudaDeviceSynchronize();
-        printf("%d",*offset);
+ 
           gpuErrchk(cudaDeviceSynchronize());
 
         stopTimeAndPrint(&timer, "spmspm");

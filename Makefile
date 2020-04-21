@@ -18,7 +18,7 @@ EXE_GPU3 = spnn_gpu3
 default: $(EXE_CPU) $(EXE_GPU0) $(EXE_GPU1) $(EXE_GPU2) $(EXE_GPU3)
 
 %.o: %.cu
-	$(NVCC) -g -G  $(NVCC_FLAGS) -c -o $@ $<
+	$(NVCC) 					-g -G  $(NVCC_FLAGS) -c -o $@ $<
 
 $(EXE_CPU): $(OBJ_CPU)
 	$(NVCC) $(NVCC_FLAGS) $(OBJ_CPU) -o $(EXE_CPU)
