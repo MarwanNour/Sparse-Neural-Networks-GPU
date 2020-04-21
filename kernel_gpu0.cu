@@ -114,6 +114,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
     unsigned int temp=0;
+    __shared__ int x=*offset;
  
     if(r < A->numRows ){
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
@@ -164,7 +165,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                             nnzIdx++;
-                            temp = atomicAdd(offset, 1);
+                            temp = atomicAdd(x, 1);
                             result->colIdxs[temp] = c;
                             result->values[temp] = sum;
                             result->rowIdxs[temp] =r ;
