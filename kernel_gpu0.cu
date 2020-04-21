@@ -147,7 +147,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 }
 __global__ void Prefix_sum(int *rowPtr,int size){
-    thrust::exclusive_scan(thrust::device, rowPtr, rrowPtr + size + 1, rowPtr);
+    thrust::exclusive_scan(thrust::device, rowPtr, rowPtr + size + 1, rowPtr);
 }
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
