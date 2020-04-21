@@ -73,20 +73,40 @@ __global__ void histogram_gpu(unsigned int* input, unsigned int* bins, unsigned 
     }
 }
 
+__global__ void Binning(CSRMatrix * A,COOMatrix * result){
+    for(unsigned int index = 0; index < A->nnz; ++index) {
+        unsigned int row = A->rowIdxs[index];
+        unsigned int i = result->rowPtrs[row]++;
+        result->colIdxs[i] = A->colIdxs[index];
+        result->values[i] = A->values[index];
+    }
+
+
+    // Restore row pointers
+    for(unsigned int row = A->numRows - 1; row > 0; --row) {
+        result->rowPtrs[row] = result->rowPtrs[row - 1];
+    }
+
+    result->rowPtrs[0] = 0;
+    result->numRows = A->numRows;
+    result->numCols = A->numCols;
+    result->nnz = A->nnz;
+    result->capacity = A->capacity;
+}
 
 __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
-    if(i==0){
-        printf("nnz=%d\n",A->nnz);
-        for(unsigned int i = 0; i < A->nnz; ++i) {
-            unsigned int row = A->rowIdxs[i];
-            result->rowPtrs[row]++;
-        }
-        thrust::exclusive_scan(thrust::device, result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
+    // if(i==0){
+    //     printf("nnz=%d\n",A->nnz);
+    //     for(unsigned int i = 0; i < A->nnz; ++i) {
+    //         unsigned int row = A->rowIdxs[i];
+    //         result->rowPtrs[row]++;
+    //     }
 
-    }
+
+    // }
     // if(i==0){
     //     result->rowPtrs=0;
     // }
@@ -112,26 +132,9 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     __syncthreads();
 
     // Binning
-    if(i == 0){
-        for(unsigned int index = 0; index < A->nnz; ++index) {
-            unsigned int row = A->rowIdxs[index];
-            unsigned int i = result->rowPtrs[row]++;
-            result->colIdxs[i] = A->colIdxs[index];
-            result->values[i] = A->values[index];
-        }
-
-
-        // Restore row pointers
-        for(unsigned int row = A->numRows - 1; row > 0; --row) {
-            result->rowPtrs[row] = result->rowPtrs[row - 1];
-        }
-
-        result->rowPtrs[0] = 0;
-        result->numRows = A->numRows;
-        result->numCols = A->numCols;
-        result->nnz = A->nnz;
-        result->capacity = A->capacity;
-    }
+    // if(i == 0){
+       
+    // }
 
     if( i< A->numRows){
         int col_index =  result->rowPtrs[i];
@@ -142,6 +145,9 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     __syncthreads();
     A->nnz=0;
 
+}
+__global__ void Prefix_sum(int *rowPtr,int size){
+    thrust::exclusive_scan(thrust::device, rowPtrs, rrowPtrs + size + 1, rowPtrs);
 }
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
@@ -274,7 +280,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     inBuffer_d.numRows = inBuffer->numRows;
     inBuffer_d.numCols = inBuffer->numCols;
     inBuffer_d.nnz = inBuffer->nnz;
-    inBuffer_d.capacity = inBuffer->capacity;
+    inBuffer_d.capacity = inBuffer->numRows*inBuffer->numCols;
     cudaMalloc((void **) &inBuffer_d.rowPtrs, (inBuffer_d.numRows + 1) * sizeof(unsigned int));
     cudaMalloc((void **) &inBuffer_d.colIdxs, inBuffer_d.capacity * sizeof(unsigned int));
     cudaMalloc((void **) &inBuffer_d.values, inBuffer_d.capacity * sizeof(float));
@@ -327,32 +333,32 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     startTime(&timer);
 
     // ----------- out bufferCSR -----------
-    CSRMatrix *tmp = createEmptyCSR(Y0->numRows, Y0->numCols, Y0->numRows*Y0->numCols);
-    CSRMatrix outBufferCSR_d;
-    outBufferCSR_d.numRows = inBuffer_d.numRows;
-    outBufferCSR_d.numCols = inBuffer_d.numCols;
-    // outBufferCSR_d.nnz = outBuffer->nnz;
-    outBufferCSR_d.capacity = inBuffer_d.capacity;
-    cudaMalloc((void **) &outBufferCSR_d.rowPtrs, (inBuffer_d.numRows + 1) * sizeof(unsigned int));
-    cudaMalloc((void **) &outBufferCSR_d.colIdxs, inBuffer_d.capacity * sizeof(unsigned int));
-    cudaMalloc((void **) &outBufferCSR_d.values, inBuffer_d.capacity * sizeof(float));
-    CSRMatrix *outBufferCSR_p_d;
-    cudaMalloc((void **) &outBufferCSR_p_d, sizeof(CSRMatrix));
+    // CSRMatrix *tmp = createEmptyCSR(Y0->numRows, Y0->numCols, Y0->numRows*Y0->numCols);
+    // CSRMatrix outBufferCSR_d;
+    // outBufferCSR_d.numRows = inBuffer_d.numRows;
+    // outBufferCSR_d.numCols = inBuffer_d.numCols;
+    // // outBufferCSR_d.nnz = outBuffer->nnz;
+    // outBufferCSR_d.capacity = inBuffer_d.capacity;
+    // cudaMalloc((void **) &outBufferCSR_d.rowPtrs, (inBuffer_d.numRows + 1) * sizeof(unsigned int));
+    // cudaMalloc((void **) &outBufferCSR_d.colIdxs, inBuffer_d.capacity * sizeof(unsigned int));
+    // cudaMalloc((void **) &outBufferCSR_d.values, inBuffer_d.capacity * sizeof(float));
+    // CSRMatrix *outBufferCSR_p_d;
+    // cudaMalloc((void **) &outBufferCSR_p_d, sizeof(CSRMatrix));
 
 
-    cudaMemcpy(outBufferCSR_d.rowPtrs, tmp->rowPtrs, (tmp->numRows + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
-    cudaMemcpy(outBufferCSR_d.colIdxs, tmp->colIdxs, tmp->capacity * sizeof(unsigned int), cudaMemcpyHostToDevice);
-    cudaMemcpy(outBufferCSR_d.values, tmp->values, tmp->capacity * sizeof(float), cudaMemcpyHostToDevice);
+    // cudaMemcpy(outBufferCSR_d.rowPtrs, tmp->rowPtrs, (tmp->numRows + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
+    // cudaMemcpy(outBufferCSR_d.colIdxs, tmp->colIdxs, tmp->capacity * sizeof(unsigned int), cudaMemcpyHostToDevice);
+    // cudaMemcpy(outBufferCSR_d.values, tmp->values, tmp->capacity * sizeof(float), cudaMemcpyHostToDevice);
   
-    gpuErrchk(cudaMemcpy(outBufferCSR_p_d, &outBufferCSR_d, sizeof(CSRMatrix), cudaMemcpyHostToDevice));
+    // gpuErrchk(cudaMemcpy(outBufferCSR_p_d, &outBufferCSR_d, sizeof(CSRMatrix), cudaMemcpyHostToDevice));
 
 
-    // -------------- W ----------------
-    stopTimeAndPrint(&timer, "Allocate temporary csr");
+    // // -------------- W ----------------
+    // stopTimeAndPrint(&timer, "Allocate temporary csr");
 
 
-    // Copy data from CPU to GPU
-    gpuErrchk(cudaDeviceSynchronize());
+    // // Copy data from CPU to GPU
+    // gpuErrchk(cudaDeviceSynchronize());
     
 
   
@@ -363,12 +369,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
 
 
-
-
     
     
-    CSRMatrix *t ;
-    cudaMalloc((void **) &t, sizeof(CSRMatrix));
+    // CSRMatrix *t ;
+    // cudaMalloc((void **) &t, sizeof(CSRMatrix));
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
         printf("Computing layer %u (SpMSpM)\n", layer);
@@ -387,10 +391,21 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         stopTimeAndPrint(&timer, "spmspm");
 
        
-        // startTime(&timer);
-        // histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->nnz);
-        // cudaDeviceSynchronize();
-        // stopTimeAndPrint(&timer, "histogram done");
+        startTime(&timer);
+        histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, inBuffer_p_d->rowPtrs, outBufferCOO_p_d->nnz);
+        cudaDeviceSynchronize();
+        stopTimeAndPrint(&timer, "histogram done");
+
+        startTime(&timer);
+        Prefix_sum<<< 1, 1 >>>(inBuffer_p_d->rowPtrs, inBuffer_p_d->numRows);
+        cudaDeviceSynchronize();
+        stopTimeAndPrint(&timer, "prefix  done");
+
+        startTime(&timer);
+        Binning<<< 1, 1 >>>(inBuffer_p_d, outBufferCOO_p_d);
+        cudaDeviceSynchronize();
+        stopTimeAndPrint(&timer, "prefix  done");
+
         startTime(&timer);
         createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(inBuffer_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
