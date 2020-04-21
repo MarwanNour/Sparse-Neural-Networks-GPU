@@ -340,9 +340,9 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaMalloc((void **) &outBufferCSR_p_d, sizeof(CSRMatrix));
 
 
-    // cudaMemcpy(outBufferCSR_d.rowPtrs, tmp->rowPtrs, (tmp->numRows + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
-    // cudaMemcpy(outBufferCSR_d.colIdxs, tmp->colIdxs, tmp->capacity * sizeof(unsigned int), cudaMemcpyHostToDevice);
-    // cudaMemcpy(outBufferCSR_d.values, tmp->values, tmp->capacity * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(outBufferCSR_d.rowPtrs, tmp->rowPtrs, (tmp->numRows + 1) * sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(outBufferCSR_d.colIdxs, tmp->colIdxs, tmp->capacity * sizeof(unsigned int), cudaMemcpyHostToDevice);
+    cudaMemcpy(outBufferCSR_d.values, tmp->values, tmp->capacity * sizeof(float), cudaMemcpyHostToDevice);
   
     gpuErrchk(cudaMemcpy(outBufferCSR_p_d, &outBufferCSR_d, sizeof(CSRMatrix), cudaMemcpyHostToDevice));
 
@@ -382,7 +382,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias);
         // cudaDeviceSynchronize();
  
-          gpuErrchk(cudaDeviceSynchronize());
+        gpuErrchk(cudaDeviceSynchronize());
 
         stopTimeAndPrint(&timer, "spmspm");
 
@@ -392,19 +392,19 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         // cudaDeviceSynchronize();
         // stopTimeAndPrint(&timer, "histogram done");
         startTime(&timer);
-        createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
+        createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(inBuffer_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "csr convert done");
 
-        // thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
+   
 
         // Swap buffers
      
        
-        t = inBuffer_p_d;
-        inBuffer_p_d = outBufferCSR_p_d;
-        outBufferCSR_p_d = t;
-        cudaDeviceSynchronize();
+        // t = inBuffer_p_d;
+        // inBuffer_p_d = outBufferCSR_p_d;
+        // outBufferCSR_p_d = t;
+        // cudaDeviceSynchronize();
 
     }
 
