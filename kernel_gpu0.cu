@@ -71,7 +71,7 @@ printf(" histo nnz=%d",numElems);
     //         atomicAdd(&(bins[tx]), hist[tx]);
     //     }
     // }
-    for(unsigned int i = 0; i < A->numElems; ++i) {
+    for(unsigned int i = 0; i < numElems; ++i) {
                 unsigned int row = input[i];
                 bins[row]++;
             }
