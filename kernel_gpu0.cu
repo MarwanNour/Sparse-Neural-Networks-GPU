@@ -106,6 +106,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
         thrust::sort_by_key(thrust::device, &(result->colIdxs[col_index]), &(result->colIdxs[col_index_one]), (result->values));
     }
     __syncthreads();
+    A->nnz=0;
 
 }
 
