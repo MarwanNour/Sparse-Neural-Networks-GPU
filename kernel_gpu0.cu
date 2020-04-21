@@ -73,7 +73,7 @@ __global__ void histogram_gpu(unsigned int* input, unsigned int* bins, unsigned 
     }
 }
 
-__global__ void Binning(CSRMatrix * A,COOMatrix * result){
+__global__ void Binning(CSRMatrix *result ,COOMatrix *A ){
     for(unsigned int index = 0; index < A->nnz; ++index) {
         unsigned int row = A->rowIdxs[index];
         unsigned int i = result->rowPtrs[row]++;
@@ -147,7 +147,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 }
 __global__ void Prefix_sum(int *rowPtr,int size){
-    thrust::exclusive_scan(thrust::device, rowPtrs, rrowPtrs + size + 1, rowPtrs);
+    thrust::exclusive_scan(thrust::device, rowPtr, rrowPtr + size + 1, rowPtr);
 }
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
@@ -443,10 +443,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaFree(outBufferCOO_p_d);
 
     // ----------- out bufferCSR -----------
-    cudaFree(outBufferCSR_d.rowPtrs);
-    cudaFree(outBufferCSR_d.colIdxs);
-    cudaFree(outBufferCSR_d.values);
-    cudaFree(outBufferCSR_p_d);
+    // cudaFree(outBufferCSR_d.rowPtrs);
+    // cudaFree(outBufferCSR_d.colIdxs);
+    // cudaFree(outBufferCSR_d.values);
+    // cudaFree(outBufferCSR_p_d);
 
     // -------------- W ----------------
     // cudaFree(W_d.colPtrs);
