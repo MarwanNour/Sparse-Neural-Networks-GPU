@@ -240,8 +240,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     inBuffer_d.numCols = inBuffer->numCols;
     inBuffer_d.nnz = inBuffer->nnz;
     inBuffer_d.capacity = inBuffer->capacity;
-    cudaMalloc((void **) &inBuffer_d.rowPtrs, (inBuffer_d.numRows + 1) * sizeof(unsigned int));
-    cudaMalloc((void **) &inBuffer_d.colIdxs, inBuffer_d.capacity * sizeof(unsigned int));
+    cudaMalloc((void **) &inBuffer_d.rowPtrs, (inBuffer.numRows + 1) * sizeof(unsigned int));
+    cudaMalloc((void **) &inBuffer_d.colIdxs, inBuffer.capacity * sizeof(unsigned int));
     cudaMalloc((void **) &inBuffer_d.values, inBuffer_d.capacity * sizeof(float));
 
     CSRMatrix *inBuffer_p_d;
@@ -317,7 +317,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
 
     // Copy data from CPU to GPU
-    cudaDeviceSynchronize();
+    gpuErrchk(cudaDeviceSynchronize());
     
 
   
@@ -337,13 +337,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         printf("Computing layer %u (SpMSpM)", layer);
         *offset= 0;
         // Copy W data to gpu
-        startTime(&timer);
-        // spmspm(outBuffer, inBuffer, W[layer], bias);
-        // spmspm <<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d, inBuffer_p_d, W[layer], bias,offset);
-        
-
-        stopTimeAndPrint(&timer, "layer");
-        cudaDeviceSynchronize();
+        gpuErrchk(cudaDeviceSynchronize());
 
         startTime(&timer);
       
