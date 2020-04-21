@@ -79,6 +79,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     if(i==0){
+        printf("nnz=%d\n",A->nnz);
         for(unsigned int i = 0; i < A->nnz; ++i) {
             unsigned int row = A->rowIdxs[i];
             result->rowPtrs[row]++;
@@ -398,11 +399,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         // thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
 
         // Swap buffers
-        cudaMemcpy(&inBuffer_d, outBufferCSR_p_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
-        
-        cudaDeviceSynchronize();
-
-        printf("inbuffer nnz =%d",inBuffer_d.nnz);
+     
        
         t = inBuffer_p_d;
         inBuffer_p_d = outBufferCSR_p_d;
