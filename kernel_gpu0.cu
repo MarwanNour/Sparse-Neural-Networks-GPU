@@ -146,7 +146,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     A->nnz=0;
 
 }
-__global__ void Prefix_sum(int *rowPtr,int size){
+__global__ void Prefix_sum(unsigned int *rowPtr,int size){
     thrust::exclusive_scan(thrust::device, rowPtr, rowPtr + size + 1, rowPtr);
 }
 
