@@ -337,7 +337,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         printf("Computing layer %u (SpMSpM)", layer);
         *offset= 0;
         // Copy W data to gpu
-        gpuErrchk(cudaDeviceSynchronize());
+        // gpuErrchk(cudaDeviceSynchronize());
 
         startTime(&timer);
       
