@@ -34,11 +34,19 @@ __global__ void histogram_gpu(unsigned int* rowIdxs_input, unsigned int* rowPtrs
     if(threadIdx.x < size){
         bins_s[threadIdx.x] = 0;
     }
+    if(i<numRows_input){
+        rowPtrs_result[i]=0;
+    }
     __syncthreads();
 
     while(i < nnz_input){
         unsigned char b = rowIdxs_input[i];
+        if(b>1000){
+            atomicAdd(&rowPtrs_result[b], 1);
+        }
+        else{
         atomicAdd(&bins_s[b], 1);
+        }
         i += stride;
     }
     __syncthreads();
@@ -53,14 +61,14 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 
     unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
-    if(i==0){
-        result->rowPtrs=0;
-    }
-    if(i<A->numRows){
-        int count = thrust::count(thrust::device ,A->rowIdxs, A->rowIdxs+A->nnz, i);
-        result->rowPtrs[i+1]=count;
-    }
-    __syncthreads();
+    // if(i==0){
+    //     result->rowPtrs=0;
+    // }
+    // if(i<A->numRows){
+    //     int count = thrust::count(thrust::device ,A->rowIdxs, A->rowIdxs+A->nnz, i);
+    //     result->rowPtrs[i+1]=count;
+    // }
+    // __syncthreads();
 // Call histogram
     // histogram_gpu(A->rowIdxs, result->rowPtrs, A->numRows, A->nnz);
 
@@ -74,7 +82,9 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     //     }
     //     result->rowPtrs[A->numRows] = sum;
     // }
+    if(i==0){
     thrust::exclusive_scan(thrust::device, result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
+    }
     __syncthreads();
 
     // Binning
@@ -353,10 +363,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         stopTimeAndPrint(&timer, "spmspm");
 
        
-        // startTime(&timer);
-        // // histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
-        // cudaDeviceSynchronize();
-        // stopTimeAndPrint(&timer, "histogram done");
+        startTime(&timer);
+        histogram_gpu<<< blocksPerGrid, threadsPerBlock >>>(outBufferCOO_p_d->rowIdxs, outBufferCSR_p_d->rowPtrs, outBufferCOO_p_d->numRows, outBufferCOO_p_d->nnz);
+        cudaDeviceSynchronize();
+        stopTimeAndPrint(&timer, "histogram done");
         startTime(&timer);
         createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(outBufferCSR_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
