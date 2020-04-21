@@ -83,6 +83,8 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
             unsigned int row = A->rowIdxs[i];
             result->rowPtrs[row]++;
         }
+        thrust::exclusive_scan(thrust::device, result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
+
     }
     // if(i==0){
     //     result->rowPtrs=0;
@@ -105,9 +107,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     //     }
     //     result->rowPtrs[A->numRows] = sum;
     // }
-    if(i==0){
-    thrust::exclusive_scan(thrust::device, result->rowPtrs, result->rowPtrs + result->numRows + 1, result->rowPtrs);
-    }
+   
     __syncthreads();
 
     // Binning
