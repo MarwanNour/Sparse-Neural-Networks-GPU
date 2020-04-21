@@ -370,7 +370,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     cudaMalloc((void **) &t, sizeof(CSRMatrix));
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
-        printf("Computing layer %u (SpMSpM)", layer);
+        printf("Computing layer %u (SpMSpM)\n", layer);
 
 
         // Copy W data to gpu
@@ -398,6 +398,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         // thrust::exclusive_scan(result->rowPtrs, result->rowPtrs + result->numRows, result->rowPtrs);
 
         // Swap buffers
+        cudaMemcpy(&inBuffer_d, outBufferCSR_p_d, sizeof(CSRMatrix), cudaMemcpyDeviceToHost);
+        printf("inbuffer nnz =%d",inbuffer->nnz);
        
         t = inBuffer_p_d;
         inBuffer_p_d = outBufferCSR_p_d;
