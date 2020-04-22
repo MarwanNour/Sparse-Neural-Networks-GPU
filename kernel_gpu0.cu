@@ -26,7 +26,7 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 // unsigned int* input, unsigned int* bins, unsigned int numElems
 __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
     // unsigned int* input, unsigned int* bins, unsigned int numElems{
-printf(" histo nnz=%d",numElems);
+printf(" histo nnz=%d",A->nnz);
     // int tx = threadIdx.x; int bx = blockIdx.x;
 
     // // compute global thread coordinates
