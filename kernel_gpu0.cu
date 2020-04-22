@@ -152,8 +152,8 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     A->nnz=0;
 
 }
-__global__ void Prefix_sum(unsigned int *rowPtr,int size){
-    thrust::exclusive_scan(thrust::device, rowPtr, rowPtr + size + 1, rowPtr);
+__global__ void Prefix_sum(CSRMatrix *A){
+    thrust::exclusive_scan(thrust::device, A->rowPtrs, A->rowPtrs + A->numRows + 1,A->rowPtrs );
 }
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
@@ -398,12 +398,12 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
        
         startTime(&timer);
-        histogram_gpu<<< 1,1 >>>(outBufferCOO_p_d->rowIdxs, inBuffer_p_d->rowPtrs, outBufferCOO_p_d->nnz);
+        histogram_gpu<<< 1,1 >>>( inBuffer_p_d,outBufferCOO_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "histogram done");
 
         startTime(&timer);
-        Prefix_sum<<< 1, 1 >>>(inBuffer_p_d->rowPtrs, inBuffer_p_d->numRows);
+        Prefix_sum<<< 1, 1 >>>(inBuffer_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "prefix  done");
 
