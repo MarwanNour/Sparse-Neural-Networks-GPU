@@ -74,8 +74,8 @@ printf(" histo nnz=%d",numElems);
     //     }
     // }
     for(unsigned int i = 0; i < A->nnz; ++i) {
-                unsigned int row = A->input[i];
-                result->rowPtr[row]++;
+                unsigned int row = A->rowIdxs[i];
+                result->rowPtrs[row]++;
             }
 }
 
