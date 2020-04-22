@@ -23,7 +23,9 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 } 
 #define PRIVATE 4096
 #define BLOCK_DIM 1024
-__global__ void histogram_gpu(unsigned int* input, unsigned int* bins, unsigned int numElems){
+// unsigned int* input, unsigned int* bins, unsigned int numElems
+__global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
+    // unsigned int* input, unsigned int* bins, unsigned int numElems{
 printf(" histo nnz=%d",numElems);
     // int tx = threadIdx.x; int bx = blockIdx.x;
 
@@ -71,9 +73,9 @@ printf(" histo nnz=%d",numElems);
     //         atomicAdd(&(bins[tx]), hist[tx]);
     //     }
     // }
-    for(unsigned int i = 0; i < numElems; ++i) {
-                unsigned int row = input[i];
-                bins[row]++;
+    for(unsigned int i = 0; i < A->nnz; ++i) {
+                unsigned int row = A->input[i];
+                result->rowPtr[row]++;
             }
 }
 
