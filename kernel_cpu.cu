@@ -110,7 +110,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         startTime(&timer);
         spmspm(outBuffer, inBuffer, W[layer], bias);
         stopTimeAndPrint(&timer, "");
-
+        printf("%u || %u || %u ",outBuffer->rowPtrs[0],outBuffer->rowPtrs[1],outBuffer->rowPtrs[result->numRows]);
         printf("inbuffer nnz =%d",outBuffer->nnz);
         // Swap buffers
         CSRMatrix *t = inBuffer;
