@@ -147,7 +147,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
        
     // }
 
-    for(unsigned int i = A->numRows - 1; i > 0; --i) {{
+    for(unsigned int i = A->numRows - 1; i > 0; --i) {
         int col_index =  result->rowPtrs[i];
         int col_index_one = result->rowPtrs[i + 1];
 
