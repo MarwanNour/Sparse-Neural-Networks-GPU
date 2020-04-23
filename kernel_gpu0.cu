@@ -136,7 +136,7 @@ __global__ void Binning(CSRMatrix *result ,COOMatrix *A ){
     for(unsigned int row = A->numRows - 1; row > 0; --row) {
         result->rowPtrs[row] = result->rowPtrs[row - 1];
     }
-
+    result->rowPtrs[ A->numRows]= A->nnz;
     result->rowPtrs[0] = 0;
     result->numRows = A->numRows;
     result->numCols = A->numCols;
