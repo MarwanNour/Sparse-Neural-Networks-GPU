@@ -108,7 +108,7 @@ __global__ void Binning(CSRMatrix *result ,COOMatrix *A ){
 __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 
-    unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
+    // unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     // if(i==0){
     //     printf("nnz=%d\n",A->nnz);
     //     for(unsigned int i = 0; i < A->nnz; ++i) {
@@ -147,16 +147,16 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
        
     // }
 
-    if( i< A->numRows){
+    for(unsigned int i = A->numRows - 1; i > 0; --i) {{
         int col_index =  result->rowPtrs[i];
         int col_index_one = result->rowPtrs[i + 1];
 
         thrust::sort_by_key(thrust::device, &(result->colIdxs[col_index]), &(result->colIdxs[col_index_one]), (result->values));
     }
     // __syncthreads();
-    if(i==0){
+ 
     A->nnz=0;
-    }
+    
 
 }
 __global__ void Prefix_sum(CSRMatrix *A){
@@ -420,7 +420,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         stopTimeAndPrint(&timer, "binning  done");
 
         startTime(&timer);
-        createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(inBuffer_p_d, outBufferCOO_p_d);
+        createCSRfromCOO_gpu <<< 1, 1 >>>(inBuffer_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "csr convert done");
 
