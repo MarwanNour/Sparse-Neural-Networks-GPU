@@ -178,7 +178,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
         int col_index_one = result->rowPtrs[i + 1];
         int size=col_index_one-col_index;
 
-        sort_by_key( &(result->colIdxs[col_index]),(result->values),size);
+        sort_by_key( &(result->colIdxs[col_index]),&(result->values[col_index]),size);
     }
     // __syncthreads();
     if(i==0){
