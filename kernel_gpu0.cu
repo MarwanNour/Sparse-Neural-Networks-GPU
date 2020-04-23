@@ -71,7 +71,11 @@ __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
 
     // update private histogram
     if (i < numElems) {
-        atomicAdd(&(hist[input[i]]), 1);
+        if(input[i]<PRIVATE){
+        atomicAdd(&(hist[input[i]]), 1);}
+        else{
+            atomicAdd(&(bins[input[i]]), 1);
+        }
     }
     // wait for all threads in the block to finish
     __syncthreads();
