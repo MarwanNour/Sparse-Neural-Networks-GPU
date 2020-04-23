@@ -91,7 +91,7 @@ numElems=A->nnz;
     //         }
 }
 
-__device__ sort_by_key(unsigned int * keys,float * values,int size){
+__device__ void sort_by_key(unsigned int * keys,float * values,int size){
     int i, j,temp;
     float temp2;  
     for (i = 0; i < size-1; i++)   {   
