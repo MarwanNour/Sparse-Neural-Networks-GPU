@@ -38,7 +38,7 @@ __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
         
         // compute global thread coordinates
         int i = (bx * blockDim.x) + tx;
-        if (i==0){printf(" histo nnz=%d",A->nnz);}
+        // if (i==0){printf(" histo nnz=%d",A->nnz);}
 
     // create a private histogram copy for each thread block
     __shared__ unsigned int hist[PRIVATE];
@@ -47,9 +47,7 @@ __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
                 bins[j] = 0;
         }
     }
-    if(PRIVATE<A->numRows){
-        printf("num rows = %d",A->numRows);
-    }
+
    
 
     // each thread must initialize more than 1 location
