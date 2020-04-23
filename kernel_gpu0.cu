@@ -84,6 +84,25 @@ printf(" histo nnz=%d",A->nnz);
             }
 }
 
+__device__ sort_by_key(unsigned int * keys,float * values,int size){
+    int i, j,temp;
+    float temp2;  
+    for (i = 0; i < size-1; i++)   {   
+      
+    // Last i elements are already in place  
+    for (j = 0; j < size-i-1; j++)  {
+        if (keys[j] > keys[j+1]){
+             temp = keys[j+ 1];  
+            keys[j+1] = keys[j];  
+            keys[j]= temp; 
+            temp2 = keys[j+ 1];  
+            keys[j+1] = keys[j];  
+            keys[j]= temp2;  
+
+            }
+        }
+    }
+}
 __global__ void Binning(CSRMatrix *result ,COOMatrix *A ){
     for(unsigned int index = 0; index < A->nnz; ++index) {
         unsigned int row = A->rowIdxs[index];
@@ -108,7 +127,7 @@ __global__ void Binning(CSRMatrix *result ,COOMatrix *A ){
 __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
 
-    // unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
+    unsigned int i = blockDim.x * blockIdx.x + threadIdx.x;
     // if(i==0){
     //     printf("nnz=%d\n",A->nnz);
     //     for(unsigned int i = 0; i < A->nnz; ++i) {
@@ -147,16 +166,17 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
        
     // }
 
-    for(unsigned int i = A->numRows - 1; i > 0; --i) {
+    if( i< A->numRows){
         int col_index =  result->rowPtrs[i];
         int col_index_one = result->rowPtrs[i + 1];
+        int size=col_index_one-col_index;
 
-        thrust::sort_by_key(thrust::device, &(result->colIdxs[col_index]), &(result->colIdxs[col_index_one]), (result->values));
+        sort_by_key( &(result->colIdxs[col_index]),(result->values),size);
     }
     // __syncthreads();
- 
+    if(i==0){
     A->nnz=0;
-    
+    }
 
 }
 __global__ void Prefix_sum(CSRMatrix *A){
@@ -420,7 +440,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         stopTimeAndPrint(&timer, "binning  done");
 
         startTime(&timer);
-        createCSRfromCOO_gpu <<< 1, 1 >>>(inBuffer_p_d, outBufferCOO_p_d);
+        createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(inBuffer_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "csr convert done");
 
