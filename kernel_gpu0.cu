@@ -432,7 +432,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
        
         startTime(&timer);
-        histogram_gpu<<< 1,1 >>>( inBuffer_p_d,outBufferCOO_p_d);
+        histogram_gpu<<< blocksPerGrid, threadsPerBlock  >>>( inBuffer_p_d,outBufferCOO_p_d);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "histogram done");
 
