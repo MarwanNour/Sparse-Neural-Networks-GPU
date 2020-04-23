@@ -27,7 +27,9 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
     // {
 printf(" histo nnz=%d",A->nnz);
-unsigned int* input, unsigned int* bins, unsigned int numElems;
+unsigned int* input ;
+unsigned int* bins;
+unsigned int numElems;
 input=A->rowIdxs;
 bins=result->rowPtrs;
 numElems=A->nnz;
