@@ -42,6 +42,15 @@ __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
 
     // create a private histogram copy for each thread block
     __shared__ unsigned int hist[PRIVATE];
+    if(bx==0){
+        for (int j=tx; j<A->numRows; j+=BLOCK_DIM) {
+                bins[j] = 0;
+        }
+    }
+    if(PRIVATE<A->numRows){
+        printf("num rows = %d",A->numRows);
+    }
+   
 
     // each thread must initialize more than 1 location
     if (PRIVATE > BLOCK_DIM) {
