@@ -209,9 +209,11 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int nnzIdx = 0;
     unsigned int temp=0;
 
- 
+ if (r==0){
+    printf("r= %d ",A->nnz);
+ }
     if(r < A->numRows ){
-        printf("r= %d || %d\n",r,A->nnz);
+        
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
 
