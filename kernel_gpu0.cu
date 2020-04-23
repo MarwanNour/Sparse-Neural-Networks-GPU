@@ -26,17 +26,19 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 // unsigned int* input, unsigned int* bins, unsigned int numElems
 __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
     // {
-printf(" histo nnz=%d",A->nnz);
-unsigned int* input ;
-unsigned int* bins;
-unsigned int numElems;
-input=A->rowIdxs;
-bins=result->rowPtrs;
-numElems=A->nnz;
-    int tx = threadIdx.x; int bx = blockIdx.x;
 
-    // compute global thread coordinates
-    int i = (bx * blockDim.x) + tx;
+
+        unsigned int* input ;
+        unsigned int* bins;
+        unsigned int numElems;
+        input=A->rowIdxs;
+        bins=result->rowPtrs;
+        numElems=A->nnz;
+        int tx = threadIdx.x; int bx = blockIdx.x;
+        
+        // compute global thread coordinates
+        int i = (bx * blockDim.x) + tx;
+        if i==0{printf(" histo nnz=%d",A->nnz);}
 
     // create a private histogram copy for each thread block
     __shared__ unsigned int hist[PRIVATE];
