@@ -73,6 +73,11 @@ printf(" histo nnz=%d",A->nnz);
     //         atomicAdd(&(bins[tx]), hist[tx]);
     //     }
     // }
+    for(unsigned int i = 0; i < A->numRows+1; ++i) {
+        // unsigned int row = A->rowIdxs[i];
+        result->rowPtrs[i]=0;
+    }
+    
     for(unsigned int i = 0; i < A->nnz; ++i) {
                 unsigned int row = A->rowIdxs[i];
                 result->rowPtrs[row]++;
@@ -387,7 +392,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
 
         // Copy W data to gpu
-        cudaDeviceSynchronize();
+        // cudaDeviceSynchronize();
 
         startTime(&timer);
       
