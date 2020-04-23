@@ -196,6 +196,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     // __syncthreads();
     if(i==0){
         printf("%d|| %d",result->nnz,result->numRows);
+        printf("%u || %u || %u ",result->rowPtrs[0],result->rowPtrs[1],result->rowPtrs[result->numRows])
     A->nnz=0;
     }
 
