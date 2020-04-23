@@ -135,7 +135,7 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
     //     result->rowPtrs[A->numRows] = sum;
     // }
    
-    __syncthreads();
+    // __syncthreads();
 
     // Binning
     // if(i == 0){
@@ -148,8 +148,10 @@ __global__ void createCSRfromCOO_gpu(CSRMatrix* result, COOMatrix* A) {
 
         thrust::sort_by_key(thrust::device, &(result->colIdxs[col_index]), &(result->colIdxs[col_index_one]), (result->values));
     }
-    __syncthreads();
+    // __syncthreads();
+    if(i==0){
     A->nnz=0;
+    }
 
 }
 __global__ void Prefix_sum(CSRMatrix *A){
@@ -385,7 +387,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
 
         // Copy W data to gpu
-      
+        cudaDeviceSynchronize();
 
         startTime(&timer);
       
@@ -410,7 +412,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         startTime(&timer);
         Binning<<< 1, 1 >>>(inBuffer_p_d, outBufferCOO_p_d);
         cudaDeviceSynchronize();
-        stopTimeAndPrint(&timer, "prefix  done");
+        stopTimeAndPrint(&timer, "binning  done");
 
         startTime(&timer);
         createCSRfromCOO_gpu <<< blocksPerGrid, threadsPerBlock >>>(inBuffer_p_d, outBufferCOO_p_d);
