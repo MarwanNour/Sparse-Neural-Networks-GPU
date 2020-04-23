@@ -25,63 +25,68 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 #define BLOCK_DIM 1024
 // unsigned int* input, unsigned int* bins, unsigned int numElems
 __global__ void histogram_gpu(CSRMatrix* result, COOMatrix* A){
-    // unsigned int* input, unsigned int* bins, unsigned int numElems{
+    // {
 printf(" histo nnz=%d",A->nnz);
-    // int tx = threadIdx.x; int bx = blockIdx.x;
+unsigned int* input, unsigned int* bins, unsigned int numElems;
+input=A->rowIdxs;
+bins=result->rowPtrs;
+numElems=A->nnz;
+    int tx = threadIdx.x; int bx = blockIdx.x;
 
-    // // compute global thread coordinates
-    // int i = (bx * blockDim.x) + tx;
+    // compute global thread coordinates
+    int i = (bx * blockDim.x) + tx;
 
-    // // create a private histogram copy for each thread block
-    // __shared__ unsigned int hist[PRIVATE];
+    // create a private histogram copy for each thread block
+    __shared__ unsigned int hist[PRIVATE];
 
-    // // each thread must initialize more than 1 location
-    // if (PRIVATE > BLOCK_DIM) {
-    //     for (int j=tx; j<PRIVATE; j+=BLOCK_DIM) {
-    //         if (j < PRIVATE) {
-    //             hist[j] = 0;
-    //         }
-    //     }
-    // }
-    // // use the first `PRIVATE` threads of each block to init
-    // else {
-    //     if (tx < PRIVATE) {
-    //         hist[tx] = 0;
-    //     }
-    // }
-    // // wait for all threads in the block to finish
-    // __syncthreads();
-
-    // // update private histogram
-    // if (i < numElems) {
-    //     atomicAdd(&(hist[input[i]]), 1);
-    // }
-    // // wait for all threads in the block to finish
-    // __syncthreads();
-
-    // // each thread must update more than 1 location
-    // if (PRIVATE > BLOCK_DIM) {
-    //     for (int j=tx; j<PRIVATE; j+=BLOCK_DIM) {
-    //         if (j < PRIVATE) {
-    //             atomicAdd(&(bins[j]), hist[j]);
-    //         }
-    //     }
-    // }
-    // // use the first `PRIVATE` threads to update final histogram
-    // else {
-    //     if (tx < PRIVATE) {
-    //         atomicAdd(&(bins[tx]), hist[tx]);
-    //     }
-    // }
-    for(unsigned int i = 0; i < A->numRows+1; ++i) {
-        // unsigned int row = A->rowIdxs[i];
-        result->rowPtrs[i]=0;
-    }
-    
-    for(unsigned int i = 0; i < A->nnz; ++i) {
-                unsigned int row = A->rowIdxs[i];
-                result->rowPtrs[row]++;
+    // each thread must initialize more than 1 location
+    if (PRIVATE > BLOCK_DIM) {
+        for (int j=tx; j<PRIVATE; j+=BLOCK_DIM) {
+            if (j < PRIVATE) {
+                hist[j] = 0;
             }
+        }
+    }
+    // use the first `PRIVATE` threads of each block to init
+    else {
+        if (tx < PRIVATE) {
+            hist[tx] = 0;
+        }
+    }
+    // wait for all threads in the block to finish
+    __syncthreads();
+
+    // update private histogram
+    if (i < numElems) {
+        atomicAdd(&(hist[input[i]]), 1);
+    }
+    // wait for all threads in the block to finish
+    __syncthreads();
+
+    // each thread must update more than 1 location
+    if (PRIVATE > BLOCK_DIM) {
+        for (int j=tx; j<PRIVATE; j+=BLOCK_DIM) {
+            if (j < PRIVATE) {
+                atomicAdd(&(bins[j]), hist[j]);
+            }
+        }
+    }
+    // use the first `PRIVATE` threads to update final histogram
+    else {
+        if (tx < PRIVATE) {
+            atomicAdd(&(bins[tx]), hist[tx]);
+            
+        }
+    }
+    // for(unsigned int i = 0; i < A->numRows+1; ++i) {
+    //     // unsigned int row = A->rowIdxs[i];
+    //     result->rowPtrs[i]=0;
+    // }
+    
+    // for(unsigned int i = 0; i < A->nnz; ++i) {
+    //             unsigned int row = A->rowIdxs[i];
+    //             result->rowPtrs[row]++;
+    //         }
 }
 
 __device__ sort_by_key(unsigned int * keys,float * values,int size){
