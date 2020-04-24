@@ -217,7 +217,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     COOMatrix *Yout_d = tmp_d;
     // Configurations
     const unsigned int threadsPerBlock = BLOCK_DIM;
-    const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
+    const unsigned int blocksPerGrid = (threadsPerBlock + Y0->numRows - 1)/threadsPerBlock;
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
