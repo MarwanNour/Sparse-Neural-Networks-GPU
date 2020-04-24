@@ -52,7 +52,7 @@ void spmspm(CSRMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
                             result->colIdxs[nnzIdx] = c;
                             result->values[nnzIdx] = sum;
                             ++nnzIdx;
-                        }    
+                        }
                     }
                 }
             }
@@ -84,7 +84,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
     // Convert featureVectors to CSR
     startTime(&timer);
-    CSRMatrix* Y0 = createCSRfromCOO(featureVectors);
+    CSRMatrix* Y0 = createEmptyCSR(featureVectors->numRows, featureVectors->numCols, featureVectors->nnz);
+    convertCOOtoCSR(featureVectors, Y0);
     stopTimeAndPrint(&timer, "Convert feature vectors to CSR");
 
     // Convert layer weights to CSC
@@ -101,7 +102,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *inBuffer  = Y0;
     CSRMatrix *outBuffer = tmp;
     stopTimeAndPrint(&timer, "Allocate temporary buffer");
-        
+
     // Loop over layers
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
@@ -110,8 +111,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         startTime(&timer);
         spmspm(outBuffer, inBuffer, W[layer], bias);
         stopTimeAndPrint(&timer, "");
-        printf("%u || %u || %u ",outBuffer->rowPtrs[0],outBuffer->rowPtrs[1],outBuffer->rowPtrs[outBuffer->numRows]);
-        printf("inbuffer nnz =%d",outBuffer->nnz);
+        printf("    Output matrix number of nonzeros: %d\n", outBuffer->nnz);
+
         // Swap buffers
         CSRMatrix *t = inBuffer;
         inBuffer = outBuffer;
