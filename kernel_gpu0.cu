@@ -8,6 +8,7 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
+#define BLOCK_DIM 1024
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
@@ -85,59 +86,6 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
             }
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 }
@@ -267,6 +215,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     COOMatrix *Yout = tmp;
     CSRMatrix *Yin_d = Y0_d;
     COOMatrix *Yout_d = tmp_d;
+    // Configurations
+    const unsigned int threadsPerBlock = BLOCK_DIM;
+    const unsigned int blocksPerGrid = (threadsPerBlock + inBuffer->numRows - 1)/threadsPerBlock;
+
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
         printf("Computing layer %u (SpMSpM)\n", layer);
@@ -279,7 +231,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         // SpMSpM
         startTime(&timer);
-        // TODO: spmspm <<< ..., ... >>> (Yout_d, Yin_d, W_d[layer], bias);
+         spmspm <<< blocksPerGrid, threadsPerBlock >>> (Yout_d, Yin_d, W_d[layer], bias);
         cudaDeviceSynchronize();
         stopTimeAndPrint(&timer, "    SpMSpM");
 
