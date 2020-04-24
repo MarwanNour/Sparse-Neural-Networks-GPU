@@ -12,6 +12,7 @@ int main(int argc, char** argv) {
 
     cudaDeviceSynchronize();
 
+    
     // Parse arguments
     const char*  inputDirectory = "data";
     unsigned int numLayers = 120;
