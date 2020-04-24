@@ -56,7 +56,6 @@ typedef struct CSCMatrix {
     float* values;
 } CSCMatrix;
 
-void convertCOOtoCSR(COOMatrix* A, CSRMatrix* B);
 CSCMatrix* createCSCfromCOO(COOMatrix* A);
 void freeCSC(CSCMatrix* csc);
 
