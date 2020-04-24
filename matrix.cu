@@ -70,6 +70,18 @@ void writeVectorToFile(Vector* vec, const char *fname) {
     fclose(fp);
 }
 
+COOMatrix* createEmptyCOO(unsigned int numRows, unsigned int numCols, unsigned int capacity) {
+    COOMatrix *coo = (COOMatrix *)malloc(sizeof(COOMatrix));
+    coo->rowIdxs = (unsigned int *)calloc(1, capacity * sizeof(unsigned int));
+    coo->colIdxs = (unsigned int *)malloc( capacity * sizeof(unsigned int));
+    coo->values = (float *)malloc( capacity * sizeof(float));
+    coo->numRows = numRows;
+    coo->numCols = numCols;
+    coo->nnz = 0;
+    coo->capacity = capacity;
+    return coo;
+}
+
 COOMatrix* createCOOFromFile(const char *fname, unsigned int maxColumn) {
 
     // Check if file exists
@@ -129,6 +141,17 @@ COOMatrix* createCOOFromFile(const char *fname, unsigned int maxColumn) {
     return coo;
 }
 
+void expandCOOCapacity(COOMatrix* A, unsigned int capacity) {
+    A->capacity = capacity;
+    A->rowIdxs = (unsigned int *)realloc(A->rowIdxs, capacity * sizeof(unsigned int));
+    A->colIdxs = (unsigned int *)realloc(A->colIdxs, capacity * sizeof(unsigned int));
+    A->values = (float *)realloc(A->values, capacity * sizeof(float));
+    if( A->rowIdxs==NULL || A->colIdxs==NULL || A->values==NULL ) {
+        printf("%s: Error allocating memory.\n", __func__);
+        exit(1);
+    }
+}
+
 void freeCOO(COOMatrix* coo) {
     free(coo->rowIdxs);
     free(coo->colIdxs);
@@ -136,53 +159,16 @@ void freeCOO(COOMatrix* coo) {
     free(coo);
 }
 
-CSRMatrix* createCSRfromCOO(COOMatrix* A) {
-
-    // Allocate
-    unsigned int* rowPtrs= (unsigned int *) calloc(A->numRows + 1, sizeof(unsigned int));
-    unsigned int *colIdxs = (unsigned int *) malloc( A->nnz * sizeof(unsigned int));
-    float *values = (float *)malloc( A->nnz * sizeof(float));
-
-    // Histogram
-    for(unsigned int i = 0; i < A->nnz; ++i) {
-        unsigned int row = A->rowIdxs[i];
-        rowPtrs[row]++;
+void writeCOOtoFile(COOMatrix* A, const char *fname) {
+    FILE *fp = fopen(fname, "w");
+    if(fp == NULL) {
+        fprintf(stderr, "%s: Error while opening the file: %s.\n", __func__, fname);
+        exit(1);
     }
-
-    // Prefix sum
-    unsigned int sum = 0;
-    for(unsigned int row = 0; row < A->numRows; ++row) {
-        unsigned int val = rowPtrs[row];
-        rowPtrs[row] = sum;
-        sum += val;
-    }
-    rowPtrs[A->numRows] = sum;
-
-    // Binning
     for(unsigned int index = 0; index < A->nnz; ++index) {
-        unsigned int row = A->rowIdxs[index];
-        unsigned int i = rowPtrs[row]++;
-        colIdxs[i] = A->colIdxs[index];
-        values[i] = A->values[index];
+        fprintf(fp,"%u %u %f\n", A->rowIdxs[index], A->colIdxs[index], A->values[index]);
     }
-
-    // Restore row pointers
-    for(unsigned int row = A->numRows - 1; row > 0; --row) {
-        rowPtrs[row] = rowPtrs[row - 1];
-    }
-    rowPtrs[0] = 0;
-    
-    CSRMatrix* csr = (CSRMatrix*) malloc(sizeof(CSRMatrix));
-    csr->numRows = A->numRows;
-    csr->numCols = A->numCols;
-    csr->nnz = A->nnz;
-    csr->capacity = A->nnz;
-    csr->rowPtrs = rowPtrs;
-    csr->colIdxs = colIdxs;
-    csr->values = values;
-
-    return csr;
-
+    fclose(fp);
 }
 
 CSRMatrix* createEmptyCSR(unsigned int numRows, unsigned int numCols, unsigned int capacity) {
@@ -195,6 +181,83 @@ CSRMatrix* createEmptyCSR(unsigned int numRows, unsigned int numCols, unsigned i
     csr->nnz = 0;
     csr->capacity = capacity;
     return csr;
+}
+
+void quicksort(float *data, unsigned int *key, unsigned int start, unsigned int end) {
+    if((end - start + 1) > 1) {
+        unsigned int left = start, right = end;
+        unsigned int pivot = key[right];
+        while(left <= right) {
+            while(key[left] < pivot) {
+                left = left + 1;
+            }
+            while(key[right] > pivot) {
+                right = right - 1;
+            }
+            if(left <= right) {
+                unsigned int tmpKey = key[left]; key[left] = key[right]; key[right] = tmpKey;
+                float tmpData = data[left]; data[left] = data[right]; data[right] = tmpData;
+                left = left + 1;
+                right = right - 1;
+            }
+        }
+        quicksort(data, key, start, right);
+        quicksort(data, key, left, end);
+    }
+}
+
+void convertCOOtoCSR(COOMatrix* A, CSRMatrix* B) {
+
+    // Check compatibility
+    if(B->numRows != A->numRows || B->numCols != A->numCols) {
+        fprintf(stderr, "%s: matrices have incompatible dimensions!\n", __func__);
+        exit(1);
+    }
+    if(B->capacity < A->nnz) {
+        fprintf(stderr, "%s: CSR matrix has insufficient capacity!\n", __func__);
+        exit(1);
+    }
+
+    // Set nonzeros
+    B->nnz = A->nnz;
+
+    // Histogram
+    memset(B->rowPtrs, 0, (B->numRows + 1)*sizeof(unsigned int));
+    for(unsigned int i = 0; i < A->nnz; ++i) {
+        unsigned int row = A->rowIdxs[i];
+        B->rowPtrs[row]++;
+    }
+
+    // Prefix sum
+    unsigned int sum = 0;
+    for(unsigned int row = 0; row < A->numRows; ++row) {
+        unsigned int val = B->rowPtrs[row];
+        B->rowPtrs[row] = sum;
+        sum += val;
+    }
+    B->rowPtrs[A->numRows] = sum;
+
+    // Binning
+    for(unsigned int index = 0; index < A->nnz; ++index) {
+        unsigned int row = A->rowIdxs[index];
+        unsigned int i = B->rowPtrs[row]++;
+        B->colIdxs[i] = A->colIdxs[index];
+        B->values[i] = A->values[index];
+    }
+
+    // Restore row pointers
+    for(unsigned int row = A->numRows - 1; row > 0; --row) {
+        B->rowPtrs[row] = B->rowPtrs[row - 1];
+    }
+    B->rowPtrs[0] = 0;
+
+    // Sort nonzeros within each row
+    for(unsigned int row = 0; row < B->numRows; ++row) {
+        unsigned int start = B->rowPtrs[row];
+        unsigned int end = B->rowPtrs[row + 1] - 1;
+        quicksort(B->values, B->colIdxs, start, end);
+    }
+
 }
 
 void expandCSRCapacity(CSRMatrix* A, unsigned int capacity) {
@@ -212,6 +275,20 @@ void freeCSR(CSRMatrix* csr) {
     free(csr->colIdxs);
     free(csr->values);
     free(csr);
+}
+
+void writeCSRtoFile(CSRMatrix* A, const char *fname) {
+    FILE *fp = fopen(fname, "w");
+    if(fp == NULL) {
+        fprintf(stderr, "%s: Error while opening the file: %s.\n", __func__, fname);
+        exit(1);
+    }
+    for(unsigned int r = 0; r < A->numRows; ++r) {
+        for(unsigned int index = A->rowPtrs[r]; index < A->rowPtrs[r + 1]; ++index) {
+            fprintf(fp,"%u %u %f\n", r, A->colIdxs[index], A->values[index]);
+        }
+    }
+    fclose(fp);
 }
 
 CSCMatrix* createCSCfromCOO(COOMatrix* A) {

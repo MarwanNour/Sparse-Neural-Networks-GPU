@@ -24,8 +24,11 @@ typedef struct COOMatrix {
     float* values;
 } COOMatrix;
 
+COOMatrix* createEmptyCOO(unsigned int numRows, unsigned int numCols, unsigned int capacity);
 COOMatrix* createCOOFromFile(const char *fname, unsigned int maxColumn);
+void expandCOOCapacity(COOMatrix* A, unsigned int capacity);
 void freeCOO(COOMatrix* coo);
+void writeCOOtoFile(COOMatrix* A, const char *fname);
 
 typedef struct CSRMatrix {
     unsigned int numRows;
@@ -37,10 +40,11 @@ typedef struct CSRMatrix {
     float* values;
 } CSRMatrix;
 
-CSRMatrix* createCSRfromCOO(COOMatrix* A);
 CSRMatrix* createEmptyCSR(unsigned int numRows, unsigned int numCols, unsigned int capacity);
+void convertCOOtoCSR(COOMatrix* A, CSRMatrix* B);
 void expandCSRCapacity(CSRMatrix* A, unsigned int capacity);
 void freeCSR(CSRMatrix* csr);
+void writeCSRtoFile(CSRMatrix* A, const char *fname);
 
 typedef struct CSCMatrix {
     unsigned int numRows;
