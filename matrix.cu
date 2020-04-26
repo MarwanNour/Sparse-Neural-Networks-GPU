@@ -220,7 +220,7 @@ void convertCOOtoCSR(COOMatrix* A, CSRMatrix* B) {
 
     // Set nonzeros
     B->nnz = A->nnz;
-
+printf("%d ",B->numRows);
     // Histogram
     memset(B->rowPtrs, 0, (B->numRows + 1)*sizeof(unsigned int));
     for(unsigned int i = 0; i < A->nnz; ++i) {
