@@ -17,7 +17,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __shared__ int nnz_s;
     nnz_s=result->nnz;
     unsigned int temp=0;
-    
+
     __syncthreads();
 
     if(r < A->numRows ){
@@ -241,6 +241,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         startTime(&timer);
         convertCOOtoCSR(Yout, Yin);
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
+        printf("%d || %d || %d", yin->rowPtrs[yin->numRows],yin->rowPtrs[0] ,yin->rowPtrs[1]);
 
     }
 
