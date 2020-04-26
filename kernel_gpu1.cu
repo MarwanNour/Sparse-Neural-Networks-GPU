@@ -23,9 +23,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
-    __shared__ int nnz_s=result->nnz;
+    __shared__ int nnz_s;
+    nnz_s=result->nnz;
     unsigned int temp=0;
-
+    __syncthreads();
 
     if(r < A->numRows ){
         
