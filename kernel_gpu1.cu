@@ -12,15 +12,6 @@
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
-    // TODO
-
-
-
-
-
-    // TODO
-
-
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
     __shared__ int nnz_s;
