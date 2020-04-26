@@ -17,6 +17,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __shared__ int nnz_s;
     nnz_s=result->nnz;
     unsigned int temp=0;
+    
     __syncthreads();
 
     if(r < A->numRows ){
@@ -80,9 +81,8 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         }
     }
     __syncthreads();
-    if(threadIdx.x==0){
     atomicAdd(&result->nnz,nnzIdx);
-    }
+    
 
 }
 
