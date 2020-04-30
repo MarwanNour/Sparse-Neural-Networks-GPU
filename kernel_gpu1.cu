@@ -231,13 +231,13 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         startTime(&timer);
         copyCOOfromGPU(Yout_d, Yout);
         stopTimeAndPrint(&timer, "    Copy COO from GPU");
-        printf("    Output matrix number of nonzeros: %d\n", Yout->nnz);
+      
 
         // Convert COO to CSR
         startTime(&timer);
         convertCOOtoCSR(Yout, Yin);
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
-        printf("%d || %d || %d", Yin->rowPtrs[Yin->numRows],Yin->rowPtrs[0] ,Yin->rowPtrs[1]);
+    
 
     }
 
