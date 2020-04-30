@@ -71,7 +71,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                     if(sum > THRESHOLD || sum < -THRESHOLD) {
                         sum += bias;
 
-                        __syncthreads();
+                        // __syncthreads();
 
                         //Remove negative and zero values
                         if(sum > 0) {
