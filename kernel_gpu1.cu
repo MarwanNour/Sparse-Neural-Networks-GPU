@@ -8,7 +8,7 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
-#define BLOCK_DIM 1024
+#define BLOCK_DIM 32
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
@@ -215,7 +215,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *Yin_d = Y0_d;
     COOMatrix *Yout_d = tmp_d;
     // Configurations
-    dim3 threadsPerBlock  (32,32);
+    dim3 threadsPerBlock(BLOCK_DIM,BLOCK_DIM);
     dim3 blocksPerGrid((threadsPerBlock + Y0->numCols - 1)/threadsPerBlock,(threadsPerBlock + Y0->numRows - 1)/threadsPerBlock);
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
