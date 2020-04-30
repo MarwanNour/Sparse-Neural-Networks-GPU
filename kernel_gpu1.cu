@@ -16,8 +16,6 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
-    __shared__ int nnz_s;
-    nnz_s=0;
     unsigned int temp=0;
 
     __syncthreads();
@@ -72,10 +70,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                                 sum = YMAX;
                             }
                           
-                            temp = atomicAdd(&nnz_s, 1);
-                            result->colIdxs[temp+result->nnz] = c;
-                            result->values[temp+result->nnz] = sum;
-                            result->rowIdxs[temp+result->nnz] =r ;
+                            temp = atomicAdd(&result->nnz, 1);
+                            result->colIdxs[temp] = c;
+                            result->values[temp] = sum;
+                            result->rowIdxs[temp] =r ;
                         }
                     }
                 }
