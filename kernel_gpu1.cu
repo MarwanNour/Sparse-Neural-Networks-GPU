@@ -12,15 +12,17 @@
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
-    unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
+    // unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
 
+    unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
+    unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
     __shared__ int nnz_s;
     nnz_s=0;
     unsigned int temp=0;
 
     __syncthreads();
 
-    if(r < A->numRows ){
+    if(r < A->numRows && c <B->numCols ){
         
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
@@ -30,7 +32,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
             float *valueA = A->values + rowPtrA;
 
             // Loop over B columns
-            for(unsigned int c = 0; c < B->numCols; ++c){
+            
                 unsigned int colPtrB = B->colPtrs[c];
                 unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
 
@@ -81,9 +83,9 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         }
     }
     __syncthreads();
-if(threadIdx.x==0){
-    atomicAdd(&result->nnz,nnz_s);
-}
+    if(threadIdx.x==0){
+        atomicAdd(&result->nnz,nnz_s);
+    }                                      
 
 }
 
@@ -213,8 +215,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *Yin_d = Y0_d;
     COOMatrix *Yout_d = tmp_d;
     // Configurations
-    const unsigned int threadsPerBlock = BLOCK_DIM;
-    const unsigned int blocksPerGrid = (threadsPerBlock + Y0->numRows - 1)/threadsPerBlock;
+    dim3 threadsPerBlock  (32,32);
+    dim3 blocksPerGrid((threadsPerBlock + Y0->numCols - 1)/threadsPerBlock,(threadsPerBlock + Y0->numRows - 1)/threadsPerBlock);
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
