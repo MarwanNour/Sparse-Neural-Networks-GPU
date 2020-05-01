@@ -25,13 +25,14 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     if(r < A->numRows){
          rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
          nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
-        for (int i=0;i<nnzA;i+=BLOCK_DIM*BLOCK_DIM){
+        for (int i=0;i<1024*2;i+=BLOCK_DIM*BLOCK_DIM){
+            if(i<nnzA){
             c_s[i]=A->colIdxs[i+rowPtrA];
             v_s[i]=A->values[i+rowPtrA];
-        }
-        if(threadIdx.x==0){
-            for (int i=0;i<nnzA;i++){
-                printf("%f   ",v_s[i]);
+            }
+            else{
+                c_s[i]=0;
+                v_s[i]=0;
             }
 
         }
