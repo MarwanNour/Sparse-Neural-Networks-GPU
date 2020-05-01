@@ -91,10 +91,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __syncthreads();
     if(threadIdx.x==0&& threadIdx.y==0 ){
         int x = atomicAdd(&result->nnz, 1);
-        for(int i=0,i<index;++i){
-            result->colIdxs[i] = c_array_s[i];
-            result->values[i] = v_array_s[i];
-            result->rowIdxs[i] =r_array_s[i] ;
+        for(int i=0;i<index;++i){
+            result->colIdxs[x+i] = c_array_s[i];
+            result->values[x+i] = v_array_s[i];
+            result->rowIdxs[x+i] =r_array_s[i] ;
            
         }
     }
