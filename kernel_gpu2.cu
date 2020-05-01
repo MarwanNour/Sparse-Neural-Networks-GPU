@@ -8,6 +8,7 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
+#define factor 4
 #define BLOCK_DIM 32
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
