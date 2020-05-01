@@ -249,6 +249,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         startTime(&timer);
         convertCOOtoCSR(Yout, Yin);
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
+        printf("%d\n",Yin->nnz);
     
 
     }
