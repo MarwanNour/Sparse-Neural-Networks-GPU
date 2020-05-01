@@ -18,12 +18,13 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
     __shared__ int c_s[1024*2];
     __shared__ float v_s[1024*2];
-    
+    unsigned int rowPtrA;
+    unsigned int nnzA;
     unsigned int temp = 0;
 	// Load tile to shared memory
     if(r < A->numRows){
-        unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+         rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
+         nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
         for (int i=0;i<nnza;i+=BLOCK_DIM*BLOCK_DIM){
             c_s[i]=A->colIdxs[i+rowPtrA];
             v_s[i]=A->values[i+rowPtrA];
@@ -34,8 +35,8 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     if(r < A->numRows && c < B->numCols) {
         
-        unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+        // unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
+        // unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
 
         if(nnzA > 0){
             unsigned int *colIdxsA = A->colIdxs + rowPtrA;
