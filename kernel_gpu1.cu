@@ -235,7 +235,6 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         // Convert COO to CSR
         startTime(&timer);
         convertCOOtoCSR(Yout, Yin);
-        if(layer==0){
             int max=0;
             for(int i=0;i<Yin->numRows;++i){
                 if(Yin->rowPtrs[i+1]-Yin->rowPtrs[i]>max){
@@ -243,7 +242,6 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
                 }
             }
             printf("max elements in row = %d " ,max);
-        }
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
     
 
