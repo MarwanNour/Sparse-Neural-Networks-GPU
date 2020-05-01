@@ -58,13 +58,13 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                 // Loop over segment of non zero elements in the row of A and col of B
                 while(ia < nnzA && ib < nnzB){
                     unsigned int colIdx = c_s[ia];
-                    unsigned int rowIdx = v_s[ib];
+                    unsigned int rowIdx = rowIdxsB[ib];
                     if(colIdx < rowIdx) {
                         ia++;
                     } else if(colIdx > rowIdx) {
                         ib++;
                     } else {
-                        sum += valueA[ia] * valueB[ib];
+                        sum += v_s[ia] * valueB[ib];
                         ia++;
                         ib++;
                     }
