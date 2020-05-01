@@ -12,15 +12,6 @@
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
-    // TODO
-
-
-
-
-
-    // TODO
-
-
     unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
     unsigned int nnzIdx = 0;
     unsigned int temp=0;
@@ -67,9 +58,6 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                     // Write to Result
                     if(sum > THRESHOLD || sum < -THRESHOLD) {
                         sum += bias;
-
-                        __syncthreads();
-
                         //Remove negative and zero values
                         if(sum > 0) {
                             if(sum>YMAX) {

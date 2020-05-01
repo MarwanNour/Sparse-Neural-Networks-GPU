@@ -8,23 +8,18 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
-#define BLOCK_DIM 1024
+#define BLOCK_DIM 32
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
-    // TODO
+    // unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
 
-    unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
-    unsigned int nnzIdx = 0;
-    unsigned int temp=0;
+    unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
+    unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int temp = 0;
 
-    __shared__ unsigned int nnz_s;
-    if(threadIdx.x == 0){
-        nnz_s = result->nnz;
-    }
-    __syncthreads();
 
-    if(r < A->numRows ){
+    if(r < A->numRows && c < B->numCols) {
         
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
@@ -34,63 +29,52 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
             float *valueA = A->values + rowPtrA;
 
             // Loop over B columns
-            for(unsigned int c = 0; c < B->numCols; ++c){
-                unsigned int colPtrB = B->colPtrs[c];
-                unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
+            unsigned int colPtrB = B->colPtrs[c];
+            unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
 
-                if(nnzB > 0){
-                    unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
-                    float *valueB = B->values + colPtrB;
+            if(nnzB > 0){
+                unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
+                float *valueB = B->values + colPtrB;
 
-                    // Loop and find intersection
-                    float sum = 0;
-                    unsigned int ia = 0;
-                    unsigned int ib = 0;
+                // Loop and find intersection
+                float sum = 0;
+                unsigned int ia = 0;
+                unsigned int ib = 0;
 
-                    // Loop over segment of non zero elements in the row of A and col of B
-                    while(ia < nnzA && ib < nnzB){
-                        unsigned int colIdx = colIdxsA[ia];
-                        unsigned int rowIdx = rowIdxsB[ib];
-                        if(colIdx < rowIdx) {
-                            ia++;
-                        } else if(colIdx > rowIdx) {
-                            ib++;
-                        } else {
-                            sum += valueA[ia]*valueB[ib];
-                            ia++;
-                            ib++;
-                        }
+                // Loop over segment of non zero elements in the row of A and col of B
+                while(ia < nnzA && ib < nnzB){
+                    unsigned int colIdx = colIdxsA[ia];
+                    unsigned int rowIdx = rowIdxsB[ib];
+                    if(colIdx < rowIdx) {
+                        ia++;
+                    } else if(colIdx > rowIdx) {
+                        ib++;
+                    } else {
+                        sum += valueA[ia] * valueB[ib];
+                        ia++;
+                        ib++;
                     }
-                    // Sync threads
-                    // Write to Result
-                    if(sum > THRESHOLD || sum < -THRESHOLD) {
-                        sum += bias;
+                }
+                // Sync threads
+                // Write to Result
+                if(sum > THRESHOLD || sum < -THRESHOLD) {
+                    sum += bias;
 
-                        __syncthreads();
-
-                        //Remove negative and zero values
-                        if(sum > 0) {
-                            if(sum>YMAX) {
-                                sum = YMAX;
-                            }
-                            nnzIdx++;
-                            // temp = atomicAdd(&result->nnz, 1);
-                            temp = atomicAdd(&nnz_s, 1);
-                            result->colIdxs[temp] = c;
-                            result->values[temp] = sum;
-                            result->rowIdxs[temp] =r ;
+                    //Remove negative and zero values
+                    if(sum > 0) {
+                        if(sum>YMAX) {
+                            sum = YMAX;
                         }
+                        
+                        temp = atomicAdd(&result->nnz, 1);
+                        result->colIdxs[temp] = c;
+                        result->values[temp] = sum;
+                        result->rowIdxs[temp] = r;
                     }
                 }
             }
         }
-        __syncthreads();
-        // Write smem to gmem
-        if(threadIdx.x == 0){
-            atomicAdd(&result->nnz, nnz_s);
-        }
-    }
-
+    }                                    
 }
 
 void findNonzeroRows(Vector* v, CSRMatrix* A) {
@@ -219,8 +203,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *Yin_d = Y0_d;
     COOMatrix *Yout_d = tmp_d;
     // Configurations
-    const unsigned int threadsPerBlock = BLOCK_DIM;
-    const unsigned int blocksPerGrid = (threadsPerBlock + Y0->numRows - 1)/threadsPerBlock;
+    dim3 threadsPerBlock(BLOCK_DIM,BLOCK_DIM);
+    dim3 blocksPerGrid((threadsPerBlock.x + Y0->numCols - 1)/threadsPerBlock.x,(threadsPerBlock.y + Y0->numRows - 1)/threadsPerBlock.y);
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
@@ -242,12 +226,22 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         startTime(&timer);
         copyCOOfromGPU(Yout_d, Yout);
         stopTimeAndPrint(&timer, "    Copy COO from GPU");
-        printf("    Output matrix number of nonzeros: %d\n", Yout->nnz);
+      
 
         // Convert COO to CSR
         startTime(&timer);
         convertCOOtoCSR(Yout, Yin);
+        if(layer==0){
+            int max=0;
+            for(int i=0;i<Yin->numRows;++i){
+                if(Yin->rowPtrs[i+1]-Yin->rowPtrs[i]>max){
+                    max=Yin->rowPtrs[i+1]-Yin->rowPtrs[i];
+                }
+            }
+            printf("max elements in row = %d " ,max);
+        }
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
+    
 
     }
 

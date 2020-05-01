@@ -227,7 +227,7 @@ void convertCOOtoCSR(COOMatrix* A, CSRMatrix* B) {
         unsigned int row = A->rowIdxs[i];
         B->rowPtrs[row]++;
     }
-
+  
     // Prefix sum
     unsigned int sum = 0;
     for(unsigned int row = 0; row < A->numRows; ++row) {
@@ -250,6 +250,7 @@ void convertCOOtoCSR(COOMatrix* A, CSRMatrix* B) {
         B->rowPtrs[row] = B->rowPtrs[row - 1];
     }
     B->rowPtrs[0] = 0;
+
 
     // Sort nonzeros within each row
     for(unsigned int row = 0; row < B->numRows; ++row) {
