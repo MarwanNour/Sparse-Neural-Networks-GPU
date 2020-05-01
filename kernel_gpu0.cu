@@ -206,13 +206,6 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     // Configurations
     const unsigned int threadsPerBlock = BLOCK_DIM;
     const unsigned int blocksPerGrid = (threadsPerBlock + Y0->numRows - 1)/threadsPerBlock;
-    int max=0;
-    for(int i=0;i<Yin->numRows;++i){
-        if(Yin->rowPtrs[i+1]-Yin->rowPtrs[i]>max){
-            max=Yin->rowPtrs[i+1]-Yin->rowPtrs[i];
-        }
-    }
-    printf("max row =%d",max);
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
