@@ -16,10 +16,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
-    unsigned int temp=0;
+    unsigned int temp = 0;
 
 
-    if(r < A->numRows && c <B->numCols ){
+    if(r < A->numRows && c < B->numCols) {
         
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
@@ -29,56 +29,52 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
             float *valueA = A->values + rowPtrA;
 
             // Loop over B columns
-            
-                unsigned int colPtrB = B->colPtrs[c];
-                unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
+            unsigned int colPtrB = B->colPtrs[c];
+            unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
 
-                if(nnzB > 0){
-                    unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
-                    float *valueB = B->values + colPtrB;
+            if(nnzB > 0){
+                unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
+                float *valueB = B->values + colPtrB;
 
-                    // Loop and find intersection
-                    float sum = 0;
-                    unsigned int ia = 0;
-                    unsigned int ib = 0;
+                // Loop and find intersection
+                float sum = 0;
+                unsigned int ia = 0;
+                unsigned int ib = 0;
 
-                    // Loop over segment of non zero elements in the row of A and col of B
-                    while(ia < nnzA && ib < nnzB){
-                        unsigned int colIdx = colIdxsA[ia];
-                        unsigned int rowIdx = rowIdxsB[ib];
-                        if(colIdx < rowIdx) {
-                            ia++;
-                        } else if(colIdx > rowIdx) {
-                            ib++;
-                        } else {
-                            sum += valueA[ia]*valueB[ib];
-                            ia++;
-                            ib++;
-                        }
-                    }
-                    // Sync threads
-                    // Write to Result
-                    if(sum > THRESHOLD || sum < -THRESHOLD) {
-                        sum += bias;
-
-                        // __syncthreads();
-
-                        //Remove negative and zero values
-                        if(sum > 0) {
-                            if(sum>YMAX) {
-                                sum = YMAX;
-                            }
-                          
-                            temp = atomicAdd(&result->nnz, 1);
-                            result->colIdxs[temp] = c;
-                            result->values[temp] = sum;
-                            result->rowIdxs[temp] =r ;
-                        }
+                // Loop over segment of non zero elements in the row of A and col of B
+                while(ia < nnzA && ib < nnzB){
+                    unsigned int colIdx = colIdxsA[ia];
+                    unsigned int rowIdx = rowIdxsB[ib];
+                    if(colIdx < rowIdx) {
+                        ia++;
+                    } else if(colIdx > rowIdx) {
+                        ib++;
+                    } else {
+                        sum += valueA[ia] * valueB[ib];
+                        ia++;
+                        ib++;
                     }
                 }
+                // Sync threads
+                // Write to Result
+                if(sum > THRESHOLD || sum < -THRESHOLD) {
+                    sum += bias;
+
+                    //Remove negative and zero values
+                    if(sum > 0) {
+                        if(sum>YMAX) {
+                            sum = YMAX;
+                        }
+                        
+                        temp = atomicAdd(&result->nnz, 1);
+                        result->colIdxs[temp] = c;
+                        result->values[temp] = sum;
+                        result->rowIdxs[temp] = r;
+                    }
+                }
+            }
         }
     }                                    
-
 }
 
 void findNonzeroRows(Vector* v, CSRMatrix* A) {
