@@ -25,13 +25,11 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     if(r < A->numRows){
          rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
          nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
-         if(nnzA>2048){
-             printf("hellooo there");
-         }
         for (int i=0;i<nnzA;i+=BLOCK_DIM*BLOCK_DIM){
             c_s[i]=A->colIdxs[i+rowPtrA];
             v_s[i]=A->values[i+rowPtrA];
         }
+        
     }
 	__syncthreads();
 
@@ -76,7 +74,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                 // Write to Result
                 if(sum > THRESHOLD || sum < -THRESHOLD) {
                     sum += bias;
-
+                    printf("sum = %f",sum);
                     //Remove negative and zero values
                     if(sum > 0) {
                         if(sum>YMAX) {
