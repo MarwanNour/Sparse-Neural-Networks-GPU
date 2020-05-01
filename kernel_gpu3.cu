@@ -23,15 +23,18 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int temp = 0;
 	// Load tile to shared memory
     if(r < A->numRows){
-         rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-         nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
-         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
+        rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
+        nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+        if (nnzA>1024){
+            printf("hi");
+        }
+        unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.y * blockDim.y + threadIdx.x;
-             if(i<nnzA){
+        if(i<nnzA){
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
-       }
+        }
        
     
     }
