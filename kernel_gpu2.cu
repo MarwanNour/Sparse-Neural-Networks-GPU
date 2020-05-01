@@ -20,6 +20,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int temp=0;
     __shared__ int index; 
     index=0;
+    __shared__ int x;
     __shared__ int  r_array_s[BLOCK_DIM*BLOCK_DIM];
     __shared__ int  c_array_s[BLOCK_DIM*BLOCK_DIM];
     __shared__ float  v_array_s[BLOCK_DIM*BLOCK_DIM];
@@ -91,7 +92,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     }                                    
     __syncthreads();
     if(threadIdx.x==0&& threadIdx.y==0 ){
-        int x = atomicAdd(&result->nnz, index);
+        x = atomicAdd(&result->nnz, index);
     }
     __syncthreads();
    if(i<index){
