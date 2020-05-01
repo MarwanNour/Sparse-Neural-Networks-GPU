@@ -29,7 +29,12 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
             c_s[i]=A->colIdxs[i+rowPtrA];
             v_s[i]=A->values[i+rowPtrA];
         }
-        
+        if(threadIdx.x==0){
+            for (int i=0;i<nnzA;i++){
+                printf("%f   ",v_s[i]);
+            }
+
+        }
     }
 	__syncthreads();
 
@@ -38,7 +43,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         
         rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
-        printf("nnza = %d\n",nnzA);
+      
         if(nnzA > 0){
             // unsigned int *colIdxsA = A->colIdxs + rowPtrA;
             // float *valueA = A->values + rowPtrA;
@@ -65,7 +70,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                     } else if(colIdx > rowIdx) {
                         ib++;
                     } else {
-                        printf("vs = %f\n",v_s[ia]);
+                       
                         sum += v_s[ia] * valueB[ib];
                         ia++;
                         ib++;
