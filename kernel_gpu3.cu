@@ -27,7 +27,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
          nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
          unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
-         for (int i=0;i<nnzA;i+=BLOCK_DIM*BLOCK_DIM){
+         for (int i=threadIdx.y*blockDim.y+threadIdx.x;i<nnzA;i+=BLOCK_DIM*BLOCK_DIM){
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
         }
