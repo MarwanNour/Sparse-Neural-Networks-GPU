@@ -237,9 +237,9 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
         convertCOOtoCSR(Yout, Yin);
         if(layer==0){
             int max=0;
-            for(int i=0;i<Yout->numRows;++i){
-                if(Yout->rowPtrs[i+1]-Yout->rowPtrs[i]>max){
-                    max=Yout->rowPtrs[i+1]-Yout->rowPtrs[i]>max;
+            for(int i=0;i<Yin->numRows;++i){
+                if(Yin->rowPtrs[i+1]-Yin->rowPtrs[i]>max){
+                    max=Yin->rowPtrs[i+1]-Yin->rowPtrs[i]>max;
                 }
             }
             printf("max elements in row = %d " ,max);
