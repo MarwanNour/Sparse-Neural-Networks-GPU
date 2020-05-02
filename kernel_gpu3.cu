@@ -9,27 +9,13 @@
 #define THRESHOLD 0.000001
 #define YMAX 32
 #define BLOCK_DIM 32
+#define WARP_SIZE 16
 
-// Shared memory Tiling
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
     unsigned int temp = 0;
-
-    // Take max size
-    int max_size;
-    if(A->numCols > B->numRows){
-        max_size = A->numCols;
-    }
-    else{
-        max_size = B->numRows;
-    }
-
-
-    __shared__ unsigned int Arows_s[max_size];
-    __shared__ unsigned int Acols_s[max_size];
-    __shared__ float Avalues_s[max_size];
 
 
     if(r < A->numRows && c < B->numCols) {
@@ -37,58 +23,72 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
         unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
 
-        for(unsigned int tile = 0; tile < max_size/4; tile ++) {
-            // Load into smem
+        if(nnzA > 0){
+            unsigned int *colIdxsA = A->colIdxs + rowPtrA;
+            float *valueA = A->values + rowPtrA;
 
-            
+            // Loop over B columns
+            unsigned int colPtrB = B->colPtrs[c];
+            unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
 
-            if(nnzA > 0){
-                unsigned int *colIdxsA = A->colIdxs + rowPtrA;
-                float *valueA = A->values + rowPtrA;
-    
-                // Loop over B columns
-                unsigned int colPtrB = B->colPtrs[c];
-                unsigned int nnzB = B->colPtrs[c + 1] - colPtrB;
-    
-                if(nnzB > 0){
-                    unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
-                    float *valueB = B->values + colPtrB;
-    
-                    // Loop and find intersection
-                    float sum = 0;
-                    unsigned int ia = 0;
-                    unsigned int ib = 0;
-    
-                    // Loop over segment of non zero elements in the row of A and col of B
-                    while(ia < nnzA && ib < nnzB){
-                        unsigned int colIdx = colIdxsA[ia];
-                        unsigned int rowIdx = rowIdxsB[ib];
-                        if(colIdx < rowIdx) {
-                            ia++;
-                        } else if(colIdx > rowIdx) {
-                            ib++;
-                        } else {
-                            sum += valueA[ia] * valueB[ib];
-                            ia++;
-                            ib++;
-                        }
+            if(nnzB > 0){
+                unsigned int *rowIdxsB = B->rowIdxs + colPtrB;
+                float *valueB = B->values + colPtrB;
+
+                // Loop and find intersection
+                float sum = 0;
+                unsigned int ia = 0;
+                unsigned int ib = 0;
+
+                // Loop over segment of non zero elements in the row of A and col of B
+                while(ia < nnzA && ib < nnzB){
+                    unsigned int colIdx = colIdxsA[ia];
+                    unsigned int rowIdx = rowIdxsB[ib];
+                    if(colIdx < rowIdx) {
+                        ia++;
+                    } else if(colIdx > rowIdx) {
+                        ib++;
+                    } else {
+                        sum += valueA[ia] * valueB[ib];
+                        ia++;
+                        ib++;
                     }
-                    // Sync threads
-                    // Write to Result
-                    if(sum > THRESHOLD || sum < -THRESHOLD) {
-                        sum += bias;
-    
-                        //Remove negative and zero values
-                        if(sum > 0) {
-                            if(sum>YMAX) {
-                                sum = YMAX;
-                            }
-                            
-                            temp = atomicAdd(&result->nnz, 1);
-                            result->colIdxs[temp] = c;
-                            result->values[temp] = sum;
-                            result->rowIdxs[temp] = r;
+                }
+                // Sync threads
+                // Write to Result
+                if(sum > THRESHOLD || sum < -THRESHOLD) {
+                    sum += bias;
+
+                    //Remove negative and zero values
+                    if(sum > 0) {
+                        if(sum>YMAX) {
+                            sum = YMAX;
                         }
+
+                        // Leader thread pick
+                        unsigned int activeThreads = __activemask();
+                        unsigned int leaderThread = __ffs(activeThreads) - 1;
+                        
+                        // Get active threads
+                        unsigned int activeThreads = __popc(activeThreads);
+
+                        // Atomic add from leader thread
+                        unsigned int temp;
+                        if(threadIdx.x % WARP_SIZE == leaderThread){
+                            temp = atomicAdd(&result->nnz, activeThreads);
+                        }
+                        // Broadcast result to other threads
+                        temp = __shfl_sync(activeThreads, temp, leaderThread);
+                        
+                        // Find position of each thread
+                        unsigned int prevThreads = (1 << (threadIdx.x % WARP_SIZE)) - 1;
+                        unsigned int activePrevThreads = activeThreads & prevThreads;
+                        unsigned int offset = __popc(activePrevThreads);
+
+                        // Store result
+                        result->colIdxs[temp + offset] = c;
+                        result->values[temp + offset] = sum;
+                        result->rowIdxs[temp + offset] = r;
                     }
                 }
             }
