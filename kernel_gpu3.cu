@@ -29,9 +29,9 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.y * blockDim.x + threadIdx.x;
         if(i<nnzA){
-            printf("r=%d| %u ,i\n",r,c_s[i],i);
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
+            printf("r=%d| %u ,i\n",r,c_s[i],i);
         }
     
    
