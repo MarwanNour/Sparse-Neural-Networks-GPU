@@ -40,6 +40,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
        for(int i=0;i<A->rowPtrs[r + 1] -A->rowPtrs[r];i++){
         printf("%u ,",c_s[i]);
        }
+       printf("\n");
     }
 
 
