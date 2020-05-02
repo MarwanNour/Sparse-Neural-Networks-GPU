@@ -239,7 +239,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
                     max=Yin->rowPtrs[i+1]-Yin->rowPtrs[i];
                 }
             }
-            printf("max elements in row = %d " ,max);
+            // printf("max elements in row = %d " ,max);
         }
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
     
