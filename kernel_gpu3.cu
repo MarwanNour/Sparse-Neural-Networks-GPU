@@ -70,12 +70,12 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                         unsigned int leaderThread = __ffs(activeThreads) - 1;
                         
                         // Get active threads
-                        unsigned int activeThreads = __popc(activeThreads);
+                        unsigned int numActiveThreads = __popc(activeThreads);
 
                         // Atomic add from leader thread
                         unsigned int temp;
                         if(threadIdx.x % WARP_SIZE == leaderThread){
-                            temp = atomicAdd(&result->nnz, activeThreads);
+                            temp = atomicAdd(&result->nnz, numActiveThreads);
                         }
                         // Broadcast result to other threads
                         temp = __shfl_sync(activeThreads, temp, leaderThread);
