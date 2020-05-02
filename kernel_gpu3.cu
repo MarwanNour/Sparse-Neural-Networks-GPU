@@ -27,7 +27,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
-        int i=threadIdx.y * blockDim.y + threadIdx.x;
+        int i=threadIdx.y * blockDim.x + threadIdx.x;
         if(i<nnzA){
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
@@ -38,7 +38,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __syncthreads();
     if (threadIdx.y * blockDim.x + threadIdx.x==0){
        for(int i=0;i<A->rowPtrs[r + 1] -A->rowPtrs[r];i++){
-        printf("%u ,",c_s[i]);
+        printf("r=%d\n| %u ,",r,c_s[i]);
        }
        printf("nnza= %d\n",A->rowPtrs[r + 1] -A->rowPtrs[r]);
     }
