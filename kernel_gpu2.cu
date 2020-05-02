@@ -11,6 +11,7 @@
 #define factor 4
 #define BLOCK_DIM 32
 
+// SMEM Privatization
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     // unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;

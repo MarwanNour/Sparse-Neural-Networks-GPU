@@ -11,6 +11,7 @@
 #define BLOCK_DIM 32
 #define WARP_SIZE 32
 
+// Intra Warp Sync
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
