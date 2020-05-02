@@ -29,6 +29,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.y * blockDim.x + threadIdx.x;
         if(i<nnzA){
+            printf("r=%d| %u ,i\n",r,c_s[i],i);
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
         }
@@ -36,12 +37,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
    
     }
     __syncthreads();
-    if (threadIdx.y * blockDim.x + threadIdx.x==0){
-       for(int i=0;i<A->rowPtrs[r + 1] -A->rowPtrs[r];i++){
-        printf("r=%d\n| %u ,",r,c_s[i]);
-       }
-       printf("nnza= %d\n",A->rowPtrs[r + 1] -A->rowPtrs[r]);
-    }
+    
 
 
     if(r < A->numRows && c < B->numCols) {
