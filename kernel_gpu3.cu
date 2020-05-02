@@ -31,7 +31,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         if(i<nnzA){
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
-            printf("r=%d| %u ,i\n",r,c_s[i],i);
+            printf("r=%d| %u ,%d\n",r,c_s[i],i);
         }
     
    
