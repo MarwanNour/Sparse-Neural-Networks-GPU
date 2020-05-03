@@ -209,7 +209,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
         printf("Computing layer %u (SpMSpM)\n", layer);
-        printf("%d ", Yin->numCols);
+        
         // Copy to GPU
         startTime(&timer);
         copyCSRtoGPU(Yin, Yin_d);
