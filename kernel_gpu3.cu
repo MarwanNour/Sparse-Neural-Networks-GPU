@@ -75,7 +75,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     
         }
         else{
-            for ( int tile=0 ;i+tile*even_odd[0]<1024;i++){
+            for ( int tile=0 ;i+tile*even_odd[1]<1024;i++){
 
                 if(i+tile*even_odd[1]<nnzA){
                     c_s_o[i+tile*even_odd[1]]=colIdxsA[i+tile*even_odd[1]];
