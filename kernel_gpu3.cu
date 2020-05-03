@@ -16,10 +16,19 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
-    __shared__ unsigned int c_s[1024];
-    __shared__ float v_s[1024];
-    
-
+    __shared__ unsigned int c_s[1024*2];
+    __shared__ float v_s[1024*2];
+    __shared__ even_odd[2];
+    even_odd[0]=0;
+    even_odd[1]=0;
+    __syncthreads();
+    if(r%2==0{
+        atomicAdd(&even_odd[0],1);
+    }
+    else{
+        atomicAdd(&even_odd[1],1);
+    }
+    __syncthreads();
     unsigned int rowPtrA;
     unsigned int nnzA;
     unsigned int temp = 0;
@@ -29,16 +38,27 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
-      
-        for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=256){
+        if(r%2==0){
+        for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=even_odd[1]){
 
         if(i<nnzA){
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
             // printf("%d, %u ,%d\n",r,c_s[i],i);
         }
-    }
+        }
     
+        }
+        else{
+            for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=even_odd[1]){
+
+                if(i<nnzA){
+                    c_s[i+1024]=colIdxsA[i];
+                    v_s[i+1024]=valueA[i];
+                    // printf("%d, %u ,%d\n",r,c_s[i],i);
+                }
+                }
+        }
    
     }
     __syncthreads();
@@ -64,7 +84,14 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
                 // Loop and find intersection
                 float sum = 0;
-                unsigned int ia = 0;
+                unsigned int ia;
+                if(r%2==0){
+                    ia=0;
+                }
+                else{
+                    ia=1024;
+                    nnnzA+=1024;
+                }
                 unsigned int ib = 0;
 
                 // Loop over segment of non zero elements in the row of A and col of B
