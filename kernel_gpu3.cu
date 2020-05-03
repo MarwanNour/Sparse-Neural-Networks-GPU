@@ -22,7 +22,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     even_odd[0]=0;
     even_odd[1]=0;
     __syncthreads();
-    if(r%2==0{
+    if(r%2==0){
         atomicAdd(&even_odd[0],1);
     }
     else{
