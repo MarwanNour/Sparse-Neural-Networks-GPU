@@ -53,7 +53,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 	// Load tile to shared memory
     if(r < A->numRows){
         unsigned int rowPtrA= A->rowPtrs[r];
-        unsigned int nnzA A->rowPtrs[r + 1] - rowPtrA;  
+        unsigned int nnzA =A->rowPtrs[r + 1] - rowPtrA;  
         // rowPtrA  // Index of the current rowPtrs element
         // nnzA = // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
