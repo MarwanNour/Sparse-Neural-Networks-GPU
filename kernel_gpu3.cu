@@ -90,7 +90,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                 }
                 else{
                     ia=1024;
-                    nnnzA+=1024;
+                    nnzA+=1024;
                 }
                 unsigned int ib = 0;
 
