@@ -16,14 +16,20 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
+    
     __shared__ unsigned int c_s_e[1024];
     __shared__ float v_s_e[1024];
+
+
     __shared__ unsigned int c_s_o[1024];
     __shared__ float v_s_o[1024];
-    __shared__ int even_odd[2];
+    
+    
+    __shared__ int even;
+    __shared__ int odd;
     __shared__ bool start_even;
-    even_odd[0]=0;
-    even_odd[1]=0;
+    even=0;
+    odd=0;
     if(threadIdx.x==0&& threadIdx.y==0){
         if(r%2==0){
         start_even=1;
@@ -35,10 +41,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __syncthreads();
 
     if(r%2==0){
-        atomicAdd(&even_odd[0],1);
+        atomicAdd(&even,1);
     }
     else{
-        atomicAdd(&even_odd[1],1);
+        atomicAdd(&odd,1);
     }
     __syncthreads();
 
@@ -52,34 +58,34 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.y * blockDim.x + threadIdx.x;
-        if(start_even){
+        if(start_even==1){
             if(r%2==1){
-                i-=even_odd[0];
+                i-=even;
             }
         }
         else{
             if(r%2==0){
-                i-=even_odd[1];
+                i-=odd;
                 }
         }
     
         if(r%2==0){
-            for ( int tile=0 ;i+tile*even_odd[0]<1024;i++){
+            for ( int tile=0 ;i+tile*even<1024;i++){
 
-                if(i+tile*even_odd[0]<nnzA){
-                    c_s_e[i+tile*even_odd[0]]=colIdxsA[i+tile*even_odd[0]];
-                    v_s_e[i+tile*even_odd[0]]=valueA[i+tile*even_odd[0]];
+                if(i+tile*even<nnzA){
+                    c_s_e[i+tile*even]=colIdxsA[i+tile*even];
+                    v_s_e[i+tile*even]=valueA[i+tile*even];
                     // printf("%d, %u ,%d\n",r,c_s[i],i);
                 }
             }
     
         }
         else{
-            for ( int tile=0 ;i+tile*even_odd[1]<1024;i++){
+            for ( int tile=0 ;i+tile*odd<1024;i++){
 
-                if(i+tile*even_odd[1]<nnzA){
-                    c_s_o[i+tile*even_odd[1]]=colIdxsA[i+tile*even_odd[1]];
-                    v_s_o[i+tile*even_odd[1]]=valueA[i+tile*even_odd[1]];
+                if(i+tile*odd<nnzA){
+                    c_s_o[i+tile*odd]=colIdxsA[i+tile*odd];
+                    v_s_o[i+tile*odd]=valueA[i+tile*odd];
                     // printf("%d, %u ,%d\n",r,c_s[i],i);
                 }
             }
@@ -92,8 +98,8 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     if(r < A->numRows && c < B->numCols) {
         
-        // rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        // nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+        rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
+        nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
       
         if(nnzA > 0){
             // unsigned int *colIdxsA = A->colIdxs + rowPtrA;
