@@ -19,8 +19,18 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __shared__ unsigned int c_s[1024*2];
     __shared__ float v_s[1024*2];
     __shared__ int even_odd[2];
+    __shared__ bool start_even;
     even_odd[0]=0;
     even_odd[1]=0;
+    if(threadIdx.x==0&& threadIdx.y==0){
+        if(r%2==0){
+        start_even=true;
+        }
+        else{
+            start_even=false;
+        }
+    }
+    
     __syncthreads();
     if(r%2==0){
         atomicAdd(&even_odd[0],1);
@@ -38,8 +48,20 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
+        int i=threadIdx.y * blockDim.x + threadIdx.x;
+        if(start_even){
+            if(r%2==1){
+            i-=even_odd[0];
+            }
+        }
+        else{
+            if(r%2==0){
+                i-=even_odd[1];
+                }
+        }
+    
         if(r%2==0){
-        for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=even_odd[0]){
+        for (  ;i<1024;i+=even_odd[0]){
 
         if(i<nnzA){
             c_s[i]=colIdxsA[i];
@@ -50,7 +72,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     
         }
         else{
-            for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=even_odd[1]){
+            for (;i<1024;i+=even_odd[1]){
 
                 if(i<nnzA){
                     c_s[i+1024]=colIdxsA[i];
