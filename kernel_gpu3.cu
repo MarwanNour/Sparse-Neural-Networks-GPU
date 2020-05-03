@@ -39,7 +39,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
         if(r%2==0){
-        for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=even_odd[1]){
+        for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=even_odd[0]){
 
         if(i<nnzA){
             c_s[i]=colIdxsA[i];
