@@ -8,7 +8,7 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
-#define BLOCK_DIM 32
+#define BLOCK_DIM 16
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
@@ -18,6 +18,8 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
     __shared__ unsigned int c_s[1024];
     __shared__ float v_s[1024];
+    
+
     unsigned int rowPtrA;
     unsigned int nnzA;
     unsigned int temp = 0;
@@ -27,12 +29,15 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
-        int i=threadIdx.y * blockDim.x + threadIdx.x;
+      
+        for (  int i=threadIdx.y * blockDim.x + threadIdx.x;i<1024;i+=256){
+
         if(i<nnzA){
             c_s[i]=colIdxsA[i];
             v_s[i]=valueA[i];
-            printf("%d, %u ,%d\n",r,c_s[i],i);
+            // printf("%d, %u ,%d\n",r,c_s[i],i);
         }
+    }
     
    
     }
