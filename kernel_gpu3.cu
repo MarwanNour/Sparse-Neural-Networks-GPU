@@ -89,8 +89,8 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     if(r < A->numRows && c < B->numCols) {
         
-        rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+        // rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
+        // nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
       
         if(nnzA > 0){
             // unsigned int *colIdxsA = A->colIdxs + rowPtrA;
