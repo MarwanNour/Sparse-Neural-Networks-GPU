@@ -101,7 +101,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         
         // Number of non zero elements in A
         unsigned int rowPtrA= A->rowPtrs[r];
-        unsigned int nnzA A->rowPtrs[r + 1] - rowPtrA;  
+        unsigned int nnzA=A->rowPtrs[r + 1] - rowPtrA;  
 
         if(nnzA > 0){
             // unsigned int *colIdxsA = A->colIdxs + rowPtrA;
