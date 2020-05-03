@@ -18,7 +18,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
     __shared__ unsigned int c_s[1024*2];
     __shared__ float v_s[1024*2];
-    __shared__ even_odd[2];
+    __shared__ int even_odd[2];
     even_odd[0]=0;
     even_odd[1]=0;
     __syncthreads();
