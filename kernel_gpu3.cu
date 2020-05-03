@@ -48,13 +48,14 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     }
     __syncthreads();
 
-    unsigned int rowPtrA;
-    unsigned int nnzA;
+  
     unsigned int temp = 0;
 	// Load tile to shared memory
     if(r < A->numRows){
-        rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+        unsigned int rowPtrA= A->rowPtrs[r];
+        unsigned int nnzA A->rowPtrs[r + 1] - rowPtrA;  
+        // rowPtrA  // Index of the current rowPtrs element
+        // nnzA = // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.y * blockDim.x + threadIdx.x;
@@ -98,9 +99,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     if(r < A->numRows && c < B->numCols) {
         
-        rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
-      
+        // Number of non zero elements in A
+        unsigned int rowPtrA= A->rowPtrs[r];
+        unsigned int nnzA A->rowPtrs[r + 1] - rowPtrA;  
+
         if(nnzA > 0){
             // unsigned int *colIdxsA = A->colIdxs + rowPtrA;
             // float *valueA = A->values + rowPtrA;
@@ -120,37 +122,37 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
                 // Loop over segment of non zero elements in the row of A and col of B
                 if(r%2==0){
-                while(ia < nnzA && ib < nnzB){
-                    unsigned int colIdx = c_s_e[ia];
-                    unsigned int rowIdx = rowIdxsB[ib];
-                    if(colIdx < rowIdx) {
-                        ia++;
-                    } else if(colIdx > rowIdx) {
-                        ib++;
-                    } else {
-                       
-                        sum += v_s_e[ia] * valueB[ib];
-                        ia++;
-                        ib++;
+                    while(ia < nnzA && ib < nnzB){
+                        unsigned int colIdx = c_s_e[ia];
+                        unsigned int rowIdx = rowIdxsB[ib];
+                        if(colIdx < rowIdx) {
+                            ia++;
+                        } else if(colIdx > rowIdx) {
+                            ib++;
+                        } else {
+                            
+                            sum += v_s_e[ia] * valueB[ib];
+                            ia++;
+                            ib++;
+                        }
                     }
                 }
-            }
-            else{
-                while(ia < nnzA && ib < nnzB){
-                    unsigned int colIdx = c_s_o[ia];
-                    unsigned int rowIdx = rowIdxsB[ib];
-                    if(colIdx < rowIdx) {
-                        ia++;
-                    } else if(colIdx > rowIdx) {
-                        ib++;
-                    } else {
-                       
-                        sum += v_s_o[ia] * valueB[ib];
-                        ia++;
-                        ib++;
+                else{
+                    while(ia < nnzA && ib < nnzB){
+                        unsigned int colIdx = c_s_o[ia];
+                        unsigned int rowIdx = rowIdxsB[ib];
+                        if(colIdx < rowIdx) {
+                            ia++;
+                        } else if(colIdx > rowIdx) {
+                            ib++;
+                        } else {
+                        
+                            sum += v_s_o[ia] * valueB[ib];
+                            ia++;
+                            ib++;
+                        }
                     }
                 }
-            }
                 // Sync threads
                 // Write to Result
                 if(sum > THRESHOLD || sum < -THRESHOLD) {

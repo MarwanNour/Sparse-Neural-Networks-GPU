@@ -211,13 +211,13 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
         
         printf("Computing layer %u (SpMSpM)\n", layer);
-
         // Copy to GPU
+       
         startTime(&timer);
         copyCSRtoGPU(Yin, Yin_d);
         cudaMemset(&Yout_d->nnz, 0, sizeof(unsigned int));
         stopTimeAndPrint(&timer, "    Copy CSR to GPU and clear COO");
-
+        
         // SpMSpM
         startTime(&timer);
          spmspm <<< blocksPerGrid, threadsPerBlock >>> (Yout_d, Yin_d, W_d[layer], bias);
