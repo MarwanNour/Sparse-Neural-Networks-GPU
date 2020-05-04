@@ -48,7 +48,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     }
     __syncthreads();
     if(threadIdx.x==0&& threadIdx.y==0){
-        printf("even= %d  odd=% start=%d",even,odd,start_even)
+        printf("even= %d  odd=% start=%d",even,odd,start_even);
     }
   
     unsigned int temp = 0;
