@@ -47,7 +47,9 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         atomicAdd(&odd,1);
     }
     __syncthreads();
-
+    if(threadIdx.x==0&& threadIdx.y==0){
+        printf("even= %d  odd=% start=%d",even,odd,start_even)
+    }
   
     unsigned int temp = 0;
 	// Load tile to shared memory
