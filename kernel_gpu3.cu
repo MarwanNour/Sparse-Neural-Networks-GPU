@@ -11,22 +11,44 @@
 #define BLOCK_DIM 32
 #define WARP_SIZE 32
 
-// Intra Warp Sync
+// Shared memory tiling
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
-    unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
-    unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
+
+    unsigned int r = (blockIdx.x*blockDim.x + threadIdx.x)/A->numCols;
+    unsigned int c =(blockIdx.x*blockDim.x + threadIdx.x)%A->numCols;
+    
+    __shared__ unsigned int c_s[1024];
+    __shared__ float v_s[1024];
+
     unsigned int temp = 0;
+    
+	// Load tile to shared memory
+    if(r < A->numRows){
+        unsigned int rowPtrA= A->rowPtrs[r];
+        unsigned int nnzA =A->rowPtrs[r + 1] - rowPtrA;  
+        // rowPtrA  // Index of the current rowPtrs element
+        // nnzA = // Number of non zero elements in A
+        unsigned int *colIdxsA = A->colIdxs + rowPtrA;
+        float *valueA = A->values + rowPtrA;
+        int i=threadIdx.x;
+        if(i<nnzA){
+            c_s[i]=colIdxsA[i];
+            v_s[i]=valueA[i];
+        }
+    }
+    __syncthreads();
+    
 
 
     if(r < A->numRows && c < B->numCols) {
         
-        unsigned int rowPtrA = A->rowPtrs[r]; // Index of the current rowPtrs element
-        unsigned int nnzA = A->rowPtrs[r + 1] - rowPtrA;  // Number of non zero elements in A
+        // Number of non zero elements in A
+        unsigned int rowPtrA= A->rowPtrs[r];
+        unsigned int nnzA=A->rowPtrs[r + 1] - rowPtrA;  
 
         if(nnzA > 0){
-            unsigned int *colIdxsA = A->colIdxs + rowPtrA;
-            float *valueA = A->values + rowPtrA;
+           
 
             // Loop over B columns
             unsigned int colPtrB = B->colPtrs[c];
@@ -38,58 +60,39 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
                 // Loop and find intersection
                 float sum = 0;
-                unsigned int ia = 0;
+                unsigned int ia=0;
                 unsigned int ib = 0;
 
                 // Loop over segment of non zero elements in the row of A and col of B
-                while(ia < nnzA && ib < nnzB){
-                    unsigned int colIdx = colIdxsA[ia];
-                    unsigned int rowIdx = rowIdxsB[ib];
-                    if(colIdx < rowIdx) {
-                        ia++;
-                    } else if(colIdx > rowIdx) {
-                        ib++;
-                    } else {
-                        sum += valueA[ia] * valueB[ib];
-                        ia++;
-                        ib++;
+            
+                    while(ia < nnzA && ib < nnzB){
+                        unsigned int colIdx = c_s[ia];
+                        unsigned int rowIdx = rowIdxsB[ib];
+                        if(colIdx < rowIdx) {
+                            ia++;
+                        } else if(colIdx > rowIdx) {
+                            ib++;
+                        } else {
+                            
+                            sum += v_s[ia] * valueB[ib];
+                            ia++;
+                            ib++;
+                        }
                     }
-                }
-                // Sync threads
+             
                 // Write to Result
                 if(sum > THRESHOLD || sum < -THRESHOLD) {
                     sum += bias;
-
                     //Remove negative and zero values
                     if(sum > 0) {
                         if(sum>YMAX) {
                             sum = YMAX;
                         }
-
-                        // Leader thread pick
-                        unsigned int activeThreads = __activemask();
-                        unsigned int leaderThread = __ffs(activeThreads) - 1;
                         
-                        // Get active threads
-                        unsigned int numActiveThreads = __popc(activeThreads);
-
-                        // Atomic add from leader thread
-                        unsigned int temp;
-                        if(threadIdx.x % WARP_SIZE == leaderThread){
-                            temp = atomicAdd(&result->nnz, numActiveThreads);
-                        }
-                        // Broadcast result to other threads
-                        temp = __shfl_sync(activeThreads, temp, leaderThread);
-                        
-                        // Find position of each thread
-                        unsigned int prevThreads = (1 << (threadIdx.x % WARP_SIZE)) - 1;
-                        unsigned int activePrevThreads = activeThreads & prevThreads;
-                        unsigned int offset = __popc(activePrevThreads);
-
-                        // Store result
-                        result->colIdxs[temp + offset] = c;
-                        result->values[temp + offset] = sum;
-                        result->rowIdxs[temp + offset] = r;
+                        temp = atomicAdd(&result->nnz, 1);
+                        result->colIdxs[temp] = c;
+                        result->values[temp] = sum;
+                        result->rowIdxs[temp] = r;
                     }
                 }
             }
@@ -223,8 +226,8 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *Yin_d = Y0_d;
     COOMatrix *Yout_d = tmp_d;
     // Configurations
-    dim3 threadsPerBlock(BLOCK_DIM,BLOCK_DIM);
-    dim3 blocksPerGrid((threadsPerBlock.x + Y0->numCols - 1)/threadsPerBlock.x,(threadsPerBlock.y + Y0->numRows - 1)/threadsPerBlock.y);
+    const unsigned int threadsPerBlock = BLOCK_DIM;
+    const unsigned int blocksPerGrid = (threadsPerBlock + Y0->numRows*Y0->numCols- 1)/threadsPerBlock;
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
@@ -261,6 +264,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
             printf("max elements in row = %d " ,max);
         }
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
+        printf("%d\n",Yin->nnz);
     
 
     }

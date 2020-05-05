@@ -8,7 +8,7 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
-#define BLOCK_DIM 1024
+#define BLOCK_DIM 256
 
 // Naive Attempt
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
@@ -204,14 +204,15 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
+        
         printf("Computing layer %u (SpMSpM)\n", layer);
-
         // Copy to GPU
+       
         startTime(&timer);
         copyCSRtoGPU(Yin, Yin_d);
         cudaMemset(&Yout_d->nnz, 0, sizeof(unsigned int));
         stopTimeAndPrint(&timer, "    Copy CSR to GPU and clear COO");
-
+        
         // SpMSpM
         startTime(&timer);
          spmspm <<< blocksPerGrid, threadsPerBlock >>> (Yout_d, Yin_d, W_d[layer], bias);
