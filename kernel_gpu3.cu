@@ -12,44 +12,15 @@
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
-    // unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
+   
 
     unsigned int r = (blockIdx.x*blockDim.x + threadIdx.x)/A->numCols;
     unsigned int c =(blockIdx.x*blockDim.x + threadIdx.x)%A->numCols;
     
-    __shared__ unsigned int c_s_e[1024];
-    __shared__ float v_s_e[1024];
+    __shared__ unsigned int c_s[1024];
+    __shared__ float v_s[1024];
 
 
-    // __shared__ unsigned int c_s_o[1024];
-    // __shared__ float v_s_o[1024];
-    
-    
-    // __shared__ int even;
-    // __shared__ int odd;
-    // __shared__ bool start_even;
-    // even=0;
-    // odd=0;
-    // if(threadIdx.x==0){
-    //     if(r%2==0){
-    //     start_even=1;
-    //     }
-    //     else{
-    //         start_even=0;
-    //     }
-    // }
-    // __syncthreads();
-
-    // if(r%2==0){
-    //     atomicAdd(&even,1);
-    // }
-    // else{
-    //     atomicAdd(&odd,1);
-    // }
-    // __syncthreads();
-    // if(threadIdx.x==0&& threadIdx.y==0){
-    //     printf("even= %d  odd=% start=%d",even,odd,start_even);
-    // }
   
     unsigned int temp = 0;
 	// Load tile to shared memory
@@ -62,41 +33,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.x;
         if(i<nnzA){
-            c_s_e[i]=colIdxsA[i];
-                    v_s_e[i]=valueA[i];
+            c_s[i]=colIdxsA[i];
+            v_s[i]=valueA[i];
         }
-        // if(start_even==1){
-        //     if(r%2==1){
-        //         i-=even;
-        //     }
-        // }
-        // else{
-        //     if(r%2==0){
-        //         i-=odd;
-        //         }
-        // }
-    
-        // if(r%2==0){
-            // for ( int tile=0 ;i+tile*BLOCK_DIM<1024;i++){
-
-            //     if(i+tile*even<nnzA){
-            //         c_s_e[i+tile*even]=colIdxsA[i+tile*even];
-            //         v_s_e[i+tile*even]=valueA[i+tile*even];
-            //         // printf("%d, %u ,%d\n",r,c_s[i],i);
-            //     }
-            // }
-    
-        // }
-        // else{
-        //     for ( int tile=0 ;i+tile*odd<1024;i++){
-
-        //         if(i+tile*odd<nnzA){
-        //             c_s_o[i+tile*odd]=colIdxsA[i+tile*odd];
-        //             v_s_o[i+tile*odd]=valueA[i+tile*odd];
-        //             // printf("%d, %u ,%d\n",r,c_s[i],i);
-        //         }
-        //     }
-        // }
+     
    
     }
     __syncthreads();
@@ -110,8 +50,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         unsigned int nnzA=A->rowPtrs[r + 1] - rowPtrA;  
 
         if(nnzA > 0){
-            // unsigned int *colIdxsA = A->colIdxs + rowPtrA;
-            // float *valueA = A->values + rowPtrA;
+           
 
             // Loop over B columns
             unsigned int colPtrB = B->colPtrs[c];
@@ -127,9 +66,9 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                 unsigned int ib = 0;
 
                 // Loop over segment of non zero elements in the row of A and col of B
-                // if(r%2==0){
+            
                     while(ia < nnzA && ib < nnzB){
-                        unsigned int colIdx = c_s_e[ia];
+                        unsigned int colIdx = c_s[ia];
                         unsigned int rowIdx = rowIdxsB[ib];
                         if(colIdx < rowIdx) {
                             ia++;
@@ -137,29 +76,12 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                             ib++;
                         } else {
                             
-                            sum += v_s_e[ia] * valueB[ib];
+                            sum += v_s[ia] * valueB[ib];
                             ia++;
                             ib++;
                         }
                     }
-                // }
-                // else{
-                //     while(ia < nnzA && ib < nnzB){
-                //         unsigned int colIdx = c_s_o[ia];
-                //         unsigned int rowIdx = rowIdxsB[ib];
-                //         if(colIdx < rowIdx) {
-                //             ia++;
-                //         } else if(colIdx > rowIdx) {
-                //             ib++;
-                //         } else {
-                        
-                //             sum += v_s_o[ia] * valueB[ib];
-                //             ia++;
-                //             ib++;
-                //         }
-                //     }
-                // }
-                // Sync threads
+             
                 // Write to Result
                 if(sum > THRESHOLD || sum < -THRESHOLD) {
                     sum += bias;
@@ -306,8 +228,6 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *Yin_d = Y0_d;
     COOMatrix *Yout_d = tmp_d;
     // Configurations
-    // dim3 threadsPerBlock(BLOCK_DIM,BLOCK_DIM);
-    // dim3 blocksPerGrid((threadsPerBlock.x + Y0->numCols - 1)/threadsPerBlock.x,(threadsPerBlock.y + Y0->numRows - 1)/threadsPerBlock.y);
     const unsigned int threadsPerBlock = BLOCK_DIM;
     const unsigned int blocksPerGrid = (threadsPerBlock + Y0->numRows*Y0->numCols- 1)/threadsPerBlock;
 
