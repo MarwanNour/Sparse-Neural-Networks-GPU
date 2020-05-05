@@ -16,7 +16,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
-    unsigned int temp = 0;
+    // unsigned int temp = 0;
 
 
     if(r < A->numRows && c < B->numCols) {
