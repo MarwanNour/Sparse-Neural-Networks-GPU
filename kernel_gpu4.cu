@@ -9,11 +9,10 @@
 #define THRESHOLD 0.000001
 #define YMAX 32
 #define BLOCK_DIM 32
+#define WARP_SIZE 32
 
-// SMEM Tiling
+// Intra Warp Sync
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
-
-    // unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
 
     unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
     unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
@@ -66,11 +65,31 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
                         if(sum>YMAX) {
                             sum = YMAX;
                         }
+
+                        // Leader thread pick
+                        unsigned int activeThreads = __activemask();
+                        unsigned int leaderThread = __ffs(activeThreads) - 1;
                         
-                        temp = atomicAdd(&result->nnz, 1);
-                        result->colIdxs[temp] = c;
-                        result->values[temp] = sum;
-                        result->rowIdxs[temp] = r;
+                        // Get active threads
+                        unsigned int numActiveThreads = __popc(activeThreads);
+
+                        // Atomic add from leader thread
+                        unsigned int temp;
+                        if(threadIdx.x % WARP_SIZE == leaderThread){
+                            temp = atomicAdd(&result->nnz, numActiveThreads);
+                        }
+                        // Broadcast result to other threads
+                        temp = __shfl_sync(activeThreads, temp, leaderThread);
+                        
+                        // Find position of each thread
+                        unsigned int prevThreads = (1 << (threadIdx.x % WARP_SIZE)) - 1;
+                        unsigned int activePrevThreads = activeThreads & prevThreads;
+                        unsigned int offset = __popc(activePrevThreads);
+
+                        // Store result
+                        result->colIdxs[temp + offset] = c;
+                        result->values[temp + offset] = sum;
+                        result->rowIdxs[temp + offset] = r;
                     }
                 }
             }
@@ -239,7 +258,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
                     max=Yin->rowPtrs[i+1]-Yin->rowPtrs[i];
                 }
             }
-            // printf("max elements in row = %d " ,max);
+            printf("max elements in row = %d " ,max);
         }
         stopTimeAndPrint(&timer, "    Converting COO to CSR");
     
