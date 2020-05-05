@@ -63,7 +63,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         int i=threadIdx.x;
         if(i<nnzA){
             c_s_e[i]=colIdxsA[i];
-            //         v_s_e[i+tile*even]=valueA[i+tile*even];
+                    v_s_e[i]=valueA[i];
         }
         // if(start_even==1){
         //     if(r%2==1){
