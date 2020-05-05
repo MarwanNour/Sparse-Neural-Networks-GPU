@@ -8,12 +8,11 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
-#define BLOCK_DIM 32
-// #define WARP_SIZE 32
+#define BLOCK_DIM 1024
 
-// Shared memory tiling
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
+   
 
     unsigned int r = (blockIdx.x*blockDim.x + threadIdx.x)/A->numCols;
     unsigned int c =(blockIdx.x*blockDim.x + threadIdx.x)%A->numCols;
@@ -21,21 +20,24 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __shared__ unsigned int c_s[1024];
     __shared__ float v_s[1024];
 
+
+  
     unsigned int temp = 0;
-    
 	// Load tile to shared memory
     if(r < A->numRows){
         unsigned int rowPtrA= A->rowPtrs[r];
         unsigned int nnzA =A->rowPtrs[r + 1] - rowPtrA;  
+        // rowPtrA  // Index of the current rowPtrs element
+        // nnzA = // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.x;
-        for(int tile=0;i+tile*blockDim.x<1024;tile++){
-        if(tile*blockDim.x+i<nnzA){
-            c_s[tile*blockDim.x+i]=colIdxsA[tile*blockDim.x+i];
-            v_s[tile*blockDim.x+i]=valueA[tile*blockDim.x+i];
+        if(i<nnzA){
+            c_s[i]=colIdxsA[i];
+            v_s[i]=valueA[i];
         }
-    }
+     
+   
     }
     __syncthreads();
     
