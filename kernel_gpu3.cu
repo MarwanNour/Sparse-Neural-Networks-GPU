@@ -30,7 +30,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
     __shared__ bool start_even;
     even=0;
     odd=0;
-    if(threadIdx.x==0&& threadIdx.y==0){
+    if(threadIdx.x==0){
         if(r%2==0){
         start_even=1;
         }
@@ -60,7 +60,7 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         // nnzA = // Number of non zero elements in A
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
-        int i=threadIdx.y * blockDim.x + threadIdx.x;
+        int i=threadIdx.x;
         if(start_even==1){
             if(r%2==1){
                 i-=even;
