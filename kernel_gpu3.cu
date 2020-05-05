@@ -8,14 +8,14 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
-#define BLOCK_DIM 32
+#define BLOCK_DIM 256
 
 __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias) {
 
     // unsigned int r = blockDim.x*blockIdx.x + threadIdx.x;
 
-    unsigned int r = blockIdx.y*blockDim.y + threadIdx.y;
-    unsigned int c = blockIdx.x*blockDim.x + threadIdx.x;
+    unsigned int r = (blockIdx.x*blockDim.x + threadIdx.x)/A->numCols;
+    unsigned int c =(blockIdx.x*blockDim.x + threadIdx.x)%A->numCols;
     
     __shared__ unsigned int c_s_e[1024];
     __shared__ float v_s_e[1024];
@@ -47,9 +47,9 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         atomicAdd(&odd,1);
     }
     __syncthreads();
-    if(threadIdx.x==0&& threadIdx.y==0){
-        printf("even= %d  odd=% start=%d",even,odd,start_even);
-    }
+    // if(threadIdx.x==0&& threadIdx.y==0){
+    //     printf("even= %d  odd=% start=%d",even,odd,start_even);
+    // }
   
     unsigned int temp = 0;
 	// Load tile to shared memory
@@ -302,8 +302,10 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     CSRMatrix *Yin_d = Y0_d;
     COOMatrix *Yout_d = tmp_d;
     // Configurations
-    dim3 threadsPerBlock(BLOCK_DIM,BLOCK_DIM);
-    dim3 blocksPerGrid((threadsPerBlock.x + Y0->numCols - 1)/threadsPerBlock.x,(threadsPerBlock.y + Y0->numRows - 1)/threadsPerBlock.y);
+    // dim3 threadsPerBlock(BLOCK_DIM,BLOCK_DIM);
+    // dim3 blocksPerGrid((threadsPerBlock.x + Y0->numCols - 1)/threadsPerBlock.x,(threadsPerBlock.y + Y0->numRows - 1)/threadsPerBlock.y);
+    const unsigned int threadsPerBlock = BLOCK_DIM;
+    const unsigned int blocksPerGrid = (threadsPerBlock + Y0->numRows*Y0->numCols- 1)/threadsPerBlock;
 
     for(unsigned int layer = 0; layer < numLayers; ++layer) {
 
