@@ -8,7 +8,7 @@
 
 #define THRESHOLD 0.000001
 #define YMAX 32
-#define BLOCK_DIM 32
+#define BLOCK_DIM 16
 #define WARP_SIZE 32
 
 // Intra Warp Sync
