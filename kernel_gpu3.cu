@@ -61,6 +61,10 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         unsigned int *colIdxsA = A->colIdxs + rowPtrA;
         float *valueA = A->values + rowPtrA;
         int i=threadIdx.x;
+        if(i<nnzA){
+            c_s_e[i]=colIdxsA[i];
+            //         v_s_e[i+tile*even]=valueA[i+tile*even];
+        }
         // if(start_even==1){
         //     if(r%2==1){
         //         i-=even;
@@ -73,14 +77,14 @@ __global__ void spmspm(COOMatrix *result, CSRMatrix *A, CSCMatrix *B, float bias
         // }
     
         // if(r%2==0){
-            for ( int tile=0 ;i+tile*even<1024;i++){
+            // for ( int tile=0 ;i+tile*BLOCK_DIM<1024;i++){
 
-                if(i+tile*even<nnzA){
-                    c_s_e[i+tile*even]=colIdxsA[i+tile*even];
-                    v_s_e[i+tile*even]=valueA[i+tile*even];
-                    // printf("%d, %u ,%d\n",r,c_s[i],i);
-                }
-            }
+            //     if(i+tile*even<nnzA){
+            //         c_s_e[i+tile*even]=colIdxsA[i+tile*even];
+            //         v_s_e[i+tile*even]=valueA[i+tile*even];
+            //         // printf("%d, %u ,%d\n",r,c_s[i],i);
+            //     }
+            // }
     
         // }
         // else{
