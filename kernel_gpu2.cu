@@ -233,7 +233,7 @@ void sparseNN(Vector* result, COOMatrix* featureVectors, COOMatrix** layerWeight
     dim3 threadsPerBlock(BLOCK_DIM,BLOCK_DIM);
     dim3 blocksPerGrid((threadsPerBlock.x + Y0->numCols - 1)/threadsPerBlock.x,(threadsPerBlock.y + Y0->numRows - 1)/threadsPerBlock.y);
 
-    for(unsigned int layer = 0; layer < numLayers; ++layer) {
+    for(unsigned int layer = 0; layer < 1; ++layer) {
 
         printf("Computing layer %u (SpMSpM)\n", layer);
 
